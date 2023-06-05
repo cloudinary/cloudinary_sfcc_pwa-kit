@@ -154,11 +154,15 @@ module.exports = {
 
 If you set `url.showDefault` to `true` in `/config/default.js` file, then default locale and site are set in the URL of your Retail app. In addition to site alias, you can also configure aliases for your locale in `sites.js` file. If you configured alias, URL will reflect that instead of your locale ID. 
 
-> *Note*: URLs constructed using canonical site and locale ids are still valid URLs even when aliases are used.   
+> *Note*: URLs constructed using canonical site and locale ids are still valid URLs even when aliases are used.
+
+## Cloudinary main SFCC cartridges
+For more information, see the [SFCC cartridge repo](https://github.com/cloudinary/cloudinary_sfcc_site_cartridge).
 
 ## Documentation
 
 The full documentation for PWA Kit is hosted on the [Salesforce Developers](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/overview) portal.
+
 
 ### Useful Links:
 
@@ -168,3 +172,6 @@ The full documentation for PWA Kit is hosted on the [Salesforce Developers](http
 -   [Pushing and Deploying Bundles](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/pushing-and-deploying-bundles.html)
 -   [The Retail React App](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/retail-react-app.html)
 -   [Proxying Requests](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/proxying-requests.html)
+-   [Cloudinary Documentation](https://cloudinary.com/documentation/sfcc_b2c_commerce_cartridge_headless)
+
+
