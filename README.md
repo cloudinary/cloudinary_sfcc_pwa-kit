@@ -43,7 +43,7 @@ The configuration features include:
 
 ### Dedicated Configuration Files
 
-At project generation a single `default` configuration is created. For most cases a single configuration file will get the job done. But there are times when you want to have a different configuration for a different environment. These environments for example could be, a developers local machine, a remote `production` environment, or a remote `staging` environment. In all these cases you want to use a different configuration for each. 
+At project generation, a single `default` configuration is created. For most cases a single configuration file will get the job done. But there are times when you want to have a different configuration for a different environment. These environments for example could be, a developer's local machine, a remote `production` environment, or a remote `staging` environment. In all these cases you want to use a different configuration for each. 
 
 When multiple configurations are present, here's how the correct configuration file is chosen:
 
@@ -53,13 +53,13 @@ When multiple configurations are present, here's how the correct configuration f
 
 This configuration system allows you to do the following:
 
-- Each developer can have their own configuration, connection to their own Commerce API sandboxes.
-- Deploy a single codebase application to multiple environments with their own specific configurations (Multiple B2C Site with Different Domains).
+- Each developer can have their own configuration, and connection to their own Commerce API sandboxes.
+- Deploy a single codebase application to multiple environments with their own specific configurations (multiple B2C sites with different domains).
 
 
 ### Customize URLs
 
-You can customize how storefront URLs are formatted in `config/default.js`. The Retail React App allows you to configure site or locale references (ids or aliases) to be in the path or a query parameter. You can also not have them in the URL altogether. 
+You can customize how storefront URLs are formatted in `config/default.js`. The Retail React App allows you to configure site or locale references (IDs or aliases) to be in the path or a query parameter. You can also not have them in the URL altogether. 
 
 ```js
 // config/default.js
@@ -77,15 +77,15 @@ You can choose how the current locale appears (or doesn't appear) in the URL by 
 - `query_param`: Locale is included as a query parameter. Example: `/women/dress?locale=en-US`
 - `none`: Locale isn’t included in the URL. Example: `/women/dress`
 
-`url.showDefaults`: This boolean value dictates whether the default site or locale values are shown in the url. Defaults to: false. 
+`url.showDefaults`: This boolean value dictates whether the default site or locale values are shown in the URL. Defaults to: false. 
 
 By default, a new project is configured to not include the locale and site in the URL path.
 
-### Manage Multiple B2C Commerce Sites with Same Domain
+### Manage Multiple B2C Commerce Sites with the Same Domain
 
-By default, the Retail App is configured to a single locale, single site project. However, it can be extended to run multiple sites in one single code base. 
+By default, the Retail App is configured to a single locale, single-site project. However, it can be extended to run multiple sites in one single code base. 
 
-The `sites.js` file contains definition of the sites that you have configured in Business Manager. The following example shows configuration for `{COMMERCE-CLOUD-SITE-ID}` and `{COMMERCE-CLOUD-SITE-ID}Global` sites:
+The `sites.js` file contains definitions of the sites that you have configured in Business Manager. The following example shows configuration for `{COMMERCE-CLOUD-SITE-ID}` and `{COMMERCE-CLOUD-SITE-ID}Global` sites:
 
 ```js
 // /config/sites.js
@@ -136,7 +136,7 @@ module.exports = [
 ]
 ```
 
-Optionally, You can then map the site IDs with aliases in `/config/default.js` file and also set default site. If no alias is defined for the site, then IDs are used in URLs. 
+Optionally, You can then map the site IDs with aliases in `/config/default.js` file and also set the default site. If no alias is defined for the site, then IDs are used in URLs. 
 
 ```js
 // /config/default.js
@@ -152,16 +152,16 @@ module.exports = {
   
 ```
 
-If you set `url.showDefault` to `true` in `/config/default.js` file, then default locale and site are set in the URL of your Retail app. In addition to site alias, you can also configure aliases for your locale in `sites.js` file. If you configured alias, URL will reflect that instead of your locale ID. 
+If you set `url.showDefault` to `true` in `/config/default.js` file, then the default locale and site are set in the URL of your Retail app. In addition to site alias, you can also configure aliases for your locale in `sites.js` file. If you configured an alias, the URL will reflect that instead of your locale ID. 
 
-> *Note*: URLs constructed using canonical site and locale ids are still valid URLs even when aliases are used.
+> *Note*: URLs constructed using canonical site and locale IDs are still valid URLs even when aliases are used.
 
 ## Cloudinary main SFCC cartridges
 For more information, see the [SFCC cartridge repo](https://github.com/cloudinary/cloudinary_sfcc_site_cartridge).
 
 ## Documentation
 
-The full documentation for PWA Kit is hosted on the [Salesforce Developers](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/overview) portal.
+The full documentation for the PWA Kit is hosted on the [Salesforce Developers](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/overview) portal.
 
 
 ### Useful Links:
