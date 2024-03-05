@@ -1,7 +1,6 @@
 import React, {useEffect} from 'react'
 import PropTypes from 'prop-types'
 import DynamicImage from '@salesforce/retail-react-app/app/components/dynamic-image'
-// import $ from 'jquery'
 
 const CloudinaryPlpImage = ({cloudinaryImage = {}, dynamicImageProps = {}, image = {}}) => {
     if (typeof window !== 'undefined' && cloudinaryImage.url) {

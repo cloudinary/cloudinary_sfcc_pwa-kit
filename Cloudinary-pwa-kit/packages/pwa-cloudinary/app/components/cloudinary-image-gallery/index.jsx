@@ -9,7 +9,7 @@ import {
     // Hooks
     ListItem,
     List,
-    useMultiStyleConfig,
+    useMultiStyleConfig
 } from '@chakra-ui/react'
 import DynamicImage from '@salesforce/retail-react-app/app/components/dynamic-image'
 

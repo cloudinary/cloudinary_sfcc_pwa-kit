@@ -6,10 +6,10 @@
  */
 import React from 'react'
 import PropTypes from 'prop-types'
-import {AspectRatio, Box, Badge, Image} from '@chakra-ui/react'
-import {useItemVariant} from '@salesforce/retail-react-app/app/components/item-variant'
-import {FormattedMessage} from 'react-intl'
-import {findImageGroupBy} from '../../../overrides/app/utils/image-groups-utils'
+import { AspectRatio, Box, Badge } from '@chakra-ui/react'
+import { useItemVariant } from '@salesforce/retail-react-app/app/components/item-variant'
+import { FormattedMessage } from 'react-intl'
+import { findImageGroupBy } from '../../../overrides/app/utils/image-groups-utils'
 
 import CloudinaryLineItemImage from '../cloudinary-lineItem-image'
 
@@ -21,7 +21,7 @@ import CloudinaryLineItemImage from '../cloudinary-lineItem-image'
  * on the custom property `c_isSale`. This will need to be expanded upon to handle
  * different badge/qualifiers and property names.
  */
-const ItemImage = ({imageProps, pageType, ratio = 1, ...props}) => {
+const ItemImage = ({ imageProps, pageType, ratio = 1, ...props }) => {
     const variant = useItemVariant()
 
     // We find the 'small' images in the variant's image groups based on variationValues and pick the first one
@@ -56,8 +56,8 @@ const ItemImage = ({imageProps, pageType, ratio = 1, ...props}) => {
                     {/** Cloudinary Custom Code Starts */}
                     {variant && variant.c_cloudinary && (
                         <CloudinaryLineItemImage
-                        cldProduct={variant.c_cloudinary[pageType]}
-                        image={image}
+                            cldProduct={variant.c_cloudinary[pageType]}
+                            image={image}
                         />
                     )}
                     {/** Cloudinary Custom Code Ends */}

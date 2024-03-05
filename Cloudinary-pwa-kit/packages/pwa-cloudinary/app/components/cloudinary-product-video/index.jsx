@@ -4,7 +4,6 @@ import PropTypes from 'prop-types'
 const RenderCloudinaryVideoPlayer = ({ cloudinaryImageGallery = {} }) => {
     const cldObj = cloudinaryImageGallery
     const videoPlayerID = cldObj.randomNumber
-    const cldURLs = []
 
     useEffect(() => {
         if (cldObj && cldObj.video && cldObj.video.videoURL && cldObj.video.videoURL !== '' && cldObj.video.videoURL !== 'null') {
@@ -22,8 +21,6 @@ const RenderCloudinaryVideoPlayer = ({ cloudinaryImageGallery = {} }) => {
                         }
                     }
                 }
-            } else {
-                cldURLs.push(cldObj.video.videoURL)
             }
         }
     }, [cldObj, videoPlayerID])

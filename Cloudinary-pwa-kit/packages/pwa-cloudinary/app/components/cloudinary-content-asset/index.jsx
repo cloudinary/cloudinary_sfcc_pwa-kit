@@ -1,7 +1,5 @@
 import React, { useEffect } from 'react'
 import PropTypes from 'prop-types'
-import { Box } from '@chakra-ui/react'
-//import './index.scss'
 
 const RenderContentAssets = ({ contentResult }) => {
 
@@ -9,7 +7,6 @@ const RenderContentAssets = ({ contentResult }) => {
         if (contentResult) {
             var videoPlayerID
             var cldObj
-            var cldURLs = []
 
             document.querySelectorAll('.cloudinary-data-container').forEach((element) => {
                 cldObj = JSON.parse(element.dataset.cloudinary)
@@ -22,8 +19,6 @@ const RenderContentAssets = ({ contentResult }) => {
                         var player = cld.videoPlayer('cld-video-player' + (videoPlayerID ? '-' + videoPlayerID : ''), cldObj.video.widgetOptions)
                         player.source(cldObj.video.videoURL, {}).play()
                         player.transformation(cldObj.video.widgetOptions.transformations)
-                    } else {
-                        cldURLs.push(cldObj.video.videoURL)
                     }
                 }
             })
