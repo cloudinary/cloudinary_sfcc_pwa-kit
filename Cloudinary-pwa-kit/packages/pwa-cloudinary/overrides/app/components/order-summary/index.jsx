@@ -59,7 +59,6 @@ const CartItems = ({basket}) => {
         if (products) {
             Object.keys(products).map((key) => {
                 setCheckoutEnabled(products[key]?.c_cloudinary?.isCheckoutEnabled)
-                return
             })
         }
     }, [products])

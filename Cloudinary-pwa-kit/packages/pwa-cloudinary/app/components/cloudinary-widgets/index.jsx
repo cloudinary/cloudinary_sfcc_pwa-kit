@@ -2,14 +2,12 @@
 
 import React, { useEffect } from 'react'
 import PropTypes from 'prop-types'
-// import $ from 'jquery'
-
 
 const RenderCloudinaryGalleryWidget = ({ cloudinaryImageGallery = {} }) => {
 
     useEffect(() => {
         const cloudinaryObj = cloudinaryImageGallery
-        var gallery = document.querySelector('#cld-gallery');
+        const gallery = document.querySelector('#cld-gallery');
         while (gallery.firstChild) {
             gallery.removeChild(gallery.firstChild);
         }
@@ -26,7 +24,7 @@ const RenderCloudinaryGalleryWidget = ({ cloudinaryImageGallery = {} }) => {
 }
 
 RenderCloudinaryGalleryWidget.propTypes = {
-    cloudinaryImageGallery: PropTypes.object,
+    cloudinaryImageGallery: PropTypes.object
 }
 
 export default RenderCloudinaryGalleryWidget
