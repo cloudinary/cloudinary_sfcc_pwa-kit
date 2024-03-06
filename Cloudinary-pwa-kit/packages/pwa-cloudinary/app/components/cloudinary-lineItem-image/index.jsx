@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import PropTypes from 'prop-types'
 import { AspectRatio, Box, Image } from '@chakra-ui/react'
 
@@ -6,11 +6,11 @@ import { AspectRatio, Box, Image } from '@chakra-ui/react'
  * The image gallery displays The Image Gallery Coming from Cloudinary in Product-Detail Page.
  */
 const CloudinaryLineItemImage = ({ cldProduct = {}, image = {} }) => {
-    var url = null;
+    const [url, setUrl] = useState(null)
     if (cldProduct.miniCartImage && cldProduct.miniCartImage.url) { // Render CLD Image URL for Mini Cart
-        url = cldProduct.miniCartImage.url
+        setUrl(cldProduct.miniCartImage.url)
     } else if (cldProduct.url) { // Render CLD Image URL for (Cart Checkout Order Confirmation Order History and Order Detail)
-        url = cldProduct.url
+        setUrl(cldProduct.url)
     }
 
     return (

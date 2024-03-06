@@ -31,7 +31,7 @@ import LocaleText from '@salesforce/retail-react-app/app/components/locale-text'
 import useMultiSite from '@salesforce/retail-react-app/app/hooks/use-multi-site'
 import styled from '@emotion/styled'
 
-{/** Cloudinary Custom Code Ends */}
+{/** Cloudinary Custom Code Starts */}
 import Helmet from 'react-helmet'
 {/** Cloudinary Custom Code Ends */}
 

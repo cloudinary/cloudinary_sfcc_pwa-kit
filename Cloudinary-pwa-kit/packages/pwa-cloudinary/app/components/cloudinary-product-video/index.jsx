@@ -6,7 +6,7 @@ const RenderCloudinaryVideoPlayer = ({ cloudinaryImageGallery = {} }) => {
     const videoPlayerID = cldObj.randomNumber
 
     useEffect(() => {
-        if (cldObj && cldObj.video && cldObj.video.videoURL && cldObj.video.videoURL !== '' && cldObj.video.videoURL !== 'null') {
+        if (cldObj && cldObj.video && cldObj.video.videoURL && cldObj.video.videoURL !== 'null') {
             if (cldObj.videoPlayerEnabled && typeof cloudinary !== 'undefined') {
                 if (cloudinary.Cloudinary && cloudinary.Cloudinary.new) {
                     if (document.querySelector('.cld-video-player') && !document.querySelector('.cld-video-player').classList.contains('video-js')) {

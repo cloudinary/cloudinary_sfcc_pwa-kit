@@ -23,10 +23,10 @@ const EnterKeyNumber = 13
  */
 const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
     const [selectedIndex, setSelectedIndex] = useState(0)
+    const [imageUrls, setImageUrls] = useState('')
     const styles = useMultiStyleConfig('ImageGallery', { size })
-    var imageUrls
     if (!cloudinaryImageGallery.galleryEnabled) {
-        imageUrls = cloudinaryImageGallery.images.imageURLs
+        setImageUrls(cloudinaryImageGallery?.images?.imageURLs)
     }
     const imageUrl = imageUrls ? imageUrls?.[selectedIndex] : null
     return (
