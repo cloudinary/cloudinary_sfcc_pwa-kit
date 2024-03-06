@@ -28,7 +28,7 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
     if (!cloudinaryImageGallery.galleryEnabled) {
         setImageUrls(cloudinaryImageGallery?.images?.imageURLs)
     }
-    const imageUrl = imageUrls ? imageUrls?.[selectedIndex] : null
+    const imageUrl = imageUrls ? imageUrls[selectedIndex] : null
     return (
         <Flex direction="column">
             {cloudinaryImageGallery.galleryEnabled ? (
