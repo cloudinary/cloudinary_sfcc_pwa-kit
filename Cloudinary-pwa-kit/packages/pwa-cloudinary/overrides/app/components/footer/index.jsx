@@ -33,6 +33,7 @@ import styled from '@emotion/styled'
 
 {/** Cloudinary Custom Code Starts */}
 import Helmet from 'react-helmet'
+import { cloudinary } from '../../../../config/default'
 {/** Cloudinary Custom Code Ends */}
 
 const [StylesProvider, useStyles] = createStylesContext('Footer')
@@ -58,13 +59,13 @@ const Footer = ({ ...otherProps }) => {
 
             {/** Cloudinary Custom Code Starts */}
             <Helmet>
-                <script src='https://unpkg.com/cloudinary-core@2.6.3/cloudinary-core-shrinkwrap.min.js' />
+                <script src={`https://unpkg.com/cloudinary-core@${cloudinary.versions.CLDCoreShrinkwrapJSURLVersion}/cloudinary-core-shrinkwrap.min.js`} />
             </Helmet>
             <Helmet>
-                <script src='https://unpkg.com/cloudinary-video-player@1.3.3/dist/cld-video-player.min.js' />
+                <script src={`https://unpkg.com/cloudinary-video-player@${cloudinary.versions.cldVideoPlayerJsVersion}/dist/cld-video-player.min.js`} />
             </Helmet>
             <Helmet>
-                <link rel="stylesheet" href="https://unpkg.com/cloudinary-video-player@1.3.3/dist/cld-video-player.min.css" />
+                <link rel="stylesheet" href={`https://unpkg.com/cloudinary-video-player@${cloudinary.versions.cldVideoPlayerCssVersion}/dist/cld-video-player.min.css`} />
             </Helmet>
             {/** Cloudinary Custom Code Ends */}
 

@@ -254,7 +254,7 @@ const ProductDetail = () => {
                 <meta name="description" content={product?.pageDescription} />
                 {/** Cloudinary Custom Code Starts */ }
                 {product?.c_cloudinary?.galleryEnabled && (
-                    <script src='https://product-gallery.cloudinary.com/1.0.50/all.js' />
+                    <script src='https://product-gallery.cloudinary.com/all.js' />
                 )}
                 {/** Cloudinary Custom Code Ends */ }
             </Helmet>
