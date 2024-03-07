@@ -303,7 +303,7 @@ const ProductView = forwardRef(
                         <Box flex={1} mr={[0, 0, 0, 6, 6]}>
                             <CloudinaryImageGallery
                                 size={imageSize}
-                                cloudinaryImageGallery={product?.c_cloudinary ? product?.c_cloudinary : null}
+                                cloudinaryImageGallery={product?.c_cloudinary ? product.c_cloudinary : null}
                             />
                         </Box>
                     ) : (

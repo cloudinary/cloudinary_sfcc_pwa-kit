@@ -22,6 +22,7 @@ const Home = loadable(() => import('./pages/home'), {fallback})
 const CheckoutConfirmation = loadable(() => import('./pages/checkout/confirmation'), {fallback})
 const Account = loadable(() => import('./pages/account'), {fallback})
 const Cart = loadable(() => import('./pages/cart'), {fallback})
+const ProductDetail = loadable(() => import('./pages/product-detail'), {fallback})
 const Checkout = loadable(() => import('./pages/checkout'), {
     fallback
 })
@@ -49,6 +50,10 @@ const routes = [
     {
         path: '/account',
         component: Account
+    },
+    {
+        path: '/product/:productId',
+        component: ProductDetail
     },
     ..._routes
 ]

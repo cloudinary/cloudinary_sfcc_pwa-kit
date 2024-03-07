@@ -64,9 +64,6 @@ const Footer = ({ ...otherProps }) => {
                 <script src='https://unpkg.com/cloudinary-video-player@1.3.3/dist/cld-video-player.min.js' />
             </Helmet>
             <Helmet>
-                <script src='https://product-gallery.cloudinary.com/1.0.50/all.js' />
-            </Helmet>
-            <Helmet>
                 <link rel="stylesheet" href="https://unpkg.com/cloudinary-video-player@1.3.3/dist/cld-video-player.min.css" />
             </Helmet>
             {/** Cloudinary Custom Code Ends */}
