@@ -41,7 +41,7 @@ const RenderContentSlots = ({ slotResult }) => {
 }
 
 RenderContentSlots.propTypes = {
-    slotResult: PropTypes.text
+    slotResult: PropTypes.string
 }
 
 export default RenderContentSlots

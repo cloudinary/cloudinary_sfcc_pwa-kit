@@ -33,7 +33,7 @@ const RenderContentAssets = ({ contentResult }) => {
 
 
 RenderContentAssets.propTypes = {
-    contentResult: PropTypes.text
+    contentResult: PropTypes.string
 }
 
 export default RenderContentAssets
