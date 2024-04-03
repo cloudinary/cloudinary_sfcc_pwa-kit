@@ -40,7 +40,7 @@ const {handler} = runtime.createHandler(options, (app) => {
             contentSecurityPolicy: {
                 useDefaults: true,
                 directives: {
-                    'img-src': ["'self'", 'blob:', '*.commercecloud.salesforce.com', '*.cloudinary.com'],
+                    'img-src': ["'self'",'data:', 'blob:', '*.commercecloud.salesforce.com', '*.cloudinary.com'],
                     'media-src': ["'self'", 'blob:', '*.cloudinary.com', '*.commercecloud.salesforce.com'],
                     'script-src': ["'self'", "'unsafe-eval'", 'blob:', 'storage.googleapis.com', '*.cloudinary.com', 'unpkg.com', '*.commercecloud.salesforce.com'],
                     'connect-src': ["'self'", 'blob:', '*.cloudinary.com', '*.commercecloud.salesforce.com', 'api.cquotient.com'],
