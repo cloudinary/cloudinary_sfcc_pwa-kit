@@ -5,7 +5,7 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-import React from 'react'
+import React, {useEffect, useRef} from 'react'
 import {FormattedMessage, useIntl} from 'react-intl'
 import {useHistory, useRouteMatch} from 'react-router'
 import {
@@ -20,7 +20,7 @@ import {
     Grid,
     SimpleGrid,
     Skeleton
-} from '@chakra-ui/react'
+} from '@salesforce/retail-react-app/app/components/shared/ui'
 import {getCreditCardIcon} from '@salesforce/retail-react-app/app/utils/cc-utils'
 import {useOrder, useProducts} from '@salesforce/commerce-sdk-react'
 import Link from '@salesforce/retail-react-app/app/components/link'
@@ -35,28 +35,30 @@ import PropTypes from 'prop-types'
 const onClient = typeof window !== 'undefined'
 
 const OrderProducts = ({productItems, currency}) => {
-    const productItemsMap = productItems.reduce(
-        (map, item) => ({...map, [item.productId]: item}),
-        {}
-    )
-    const ids = Object.keys(productItemsMap).join(',') ?? ''
-    const {data: {data: products} = {}, isLoading} = useProducts(
+    const orderProductIds = productItems.map((product) => product.productId)
+    const {data: products, isLoading} = useProducts(
         {
             parameters: {
-                ids: ids
+                ids: orderProductIds
             }
         },
         {
-            enabled: !!ids && onClient
+            enabled: !!orderProductIds && onClient,
+            select: (result) => {
+                return result?.data?.reduce((result, item) => {
+                    const key = item.id
+                    result[key] = item
+                    return result
+                }, {})
+            }
         }
     )
-
-    const variants = products?.map((product) => {
-        const productItem = productItemsMap[product.id]
+    const variants = productItems?.map((item) => {
+        const product = products?.[item.productId]
         return {
-            ...productItem,
-            ...product,
-            price: productItem.price
+            ...(product ? product : {}),
+            isProductUnavailable: !product,
+            ...item
         }
     })
 
@@ -123,6 +125,12 @@ const AccountOrderDetail = () => {
     const CardIcon = getCreditCardIcon(paymentCard?.cardType)
     const itemCount = order?.productItems.reduce((count, item) => item.quantity + count, 0) || 0
 
+    const headingRef = useRef()
+    useEffect(() => {
+        // Focus the 'Order Details' header when the component mounts for accessibility
+        headingRef?.current?.focus()
+    }, [])
+
     return (
         <Stack spacing={6} data-testid="account-order-details-page">
             <Stack>
@@ -148,7 +156,7 @@ const AccountOrderDetail = () => {
                 </Box>
 
                 <Stack spacing={[1, 2]}>
-                    <Heading as="h1" fontSize={['lg', '2xl']}>
+                    <Heading as="h1" fontSize={['lg', '2xl']} tabIndex="0" ref={headingRef}>
                         <FormattedMessage
                             defaultMessage="Order Details"
                             id="account_order_detail.title.order_details"

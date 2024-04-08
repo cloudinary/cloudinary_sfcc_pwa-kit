@@ -6,7 +6,7 @@
  */
 import React from 'react'
 import PropTypes from 'prop-types'
-import {AspectRatio, Box, Badge, Image} from '@chakra-ui/react'
+import {AspectRatio, Box, Badge, Image} from '@salesforce/retail-react-app/app/components/shared/ui'
 import {useItemVariant} from '.'
 import {FormattedMessage} from 'react-intl'
 import {findImageGroupBy} from '@salesforce/retail-react-app/app/utils/image-groups-utils'
@@ -47,6 +47,24 @@ const ItemImage = ({imageProps, ratio = 1, ...props}) => {
                                 defaultMessage="Sale"
                                 id="item_image.label.sale"
                                 description="A sale badge placed on top of a product image"
+                            />
+                        </Badge>
+                    )}
+                    {variant.isProductUnavailable && (
+                        <Badge
+                            position="absolute"
+                            top={0}
+                            left={0}
+                            marginLeft={2}
+                            marginTop={2}
+                            fontSize="10px"
+                            variant="solid"
+                            colorScheme="red"
+                        >
+                            <FormattedMessage
+                                defaultMessage="Unavailable"
+                                id="item_image.label.unavailable"
+                                description="A unavailable badge placed on top of a product image"
                             />
                         </Badge>
                     )}

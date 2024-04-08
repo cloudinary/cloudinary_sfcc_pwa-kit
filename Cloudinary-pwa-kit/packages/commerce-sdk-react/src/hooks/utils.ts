@@ -78,8 +78,8 @@ export const mergeOptions = <Client extends ApiClient, Options extends ApiOption
             ...(options.parameters ? omitNullable(options.parameters) : {})
         },
         headers: {
-            ...client.clientConfig.parameters,
-            ...options.parameters
+            ...client.clientConfig.headers,
+            ...options.headers
         }
     }
     return merged
@@ -129,4 +129,12 @@ export const clone = <T>(val: T): T => {
     if (Array.isArray(val)) return val.map(clone) as T
     const entries = Object.entries(val).map(([k, v]) => [k, clone(v)])
     return Object.fromEntries(entries) as T
+}
+
+/** get a list of custom key starting with c_**/
+export const getCustomKeys = <T extends object>(obj: T) => {
+    if (typeof obj !== 'object' || obj === null) {
+        throw new Error('Invalid input. Expecting an object as an input.')
+    }
+    return Object.keys(obj).filter((key: string): key is `c_${string}` => key.startsWith('c_'))
 }

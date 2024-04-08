@@ -1,17 +1,26 @@
 /*
- * Copyright (c) 2021, salesforce.com, inc.
+ * Copyright (c) 2023, Salesforce, Inc.
  * All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
-/* eslint-disable @typescript-eslint/no-var-requires */
+
+/*
+ * Developer note! When updating this file, make sure to also update the
+ * ssr.js template files in pwa-kit-create-app.
+ *
+ * In the pwa-kit-create-app, the templates are found under:
+ * - assets/bootstrap/js/overrides/app/ssr.js.hbs
+ * - assets/templates/@salesforce/retail-react-app/app/ssr.js.hbs
+ */
+
 'use strict'
 
-const path = require('path')
-const {getRuntime} = require('@salesforce/pwa-kit-runtime/ssr/server/express')
-const {isRemote} = require('@salesforce/pwa-kit-runtime/utils/ssr-server')
-const {getConfig} = require('@salesforce/pwa-kit-runtime/utils/ssr-config')
-const helmet = require('helmet')
+import path from 'path'
+import {getRuntime} from '@salesforce/pwa-kit-runtime/ssr/server/express'
+import {defaultPwaKitSecurityHeaders} from '@salesforce/pwa-kit-runtime/utils/middleware'
+import {getConfig} from '@salesforce/pwa-kit-runtime/utils/ssr-config'
+import helmet from 'helmet'
 
 const options = {
     // The build directory (an absolute path)
@@ -20,35 +29,50 @@ const options = {
     // The cache time for SSR'd pages (defaults to 600 seconds)
     defaultCacheTimeSeconds: 600,
 
-    // This is the value of the 'mobify' object from package.json
+    // The contents of the config file for the current environment
     mobify: getConfig(),
 
     // The port that the local dev server listens on
     port: 3000,
 
     // The protocol on which the development Express app listens.
-    // Note that http://localhost is treated as a secure context for development.
-    protocol: 'http'
+    // Note that http://localhost is treated as a secure context for development,
+    // except by Safari.
+    protocol: 'http',
+
+    // Option for whether to set up a special endpoint for handling
+    // private SLAS clients
+    // Set this to false if using a SLAS public client
+    // When setting this to true, make sure to also set the PWA_KIT_SLAS_CLIENT_SECRET
+    // environment variable as this endpoint will return HTTP 501 if it is not set
+    useSLASPrivateClient: false
 }
 
 const runtime = getRuntime()
 
 const {handler} = runtime.createHandler(options, (app) => {
-    // Set HTTP security headers
+    // Set default HTTP security headers required by PWA Kit
+    app.use(defaultPwaKitSecurityHeaders)
+    // Set custom HTTP security headers
     app.use(
         helmet({
             contentSecurityPolicy: {
                 useDefaults: true,
                 directives: {
-                    'img-src': ["'self'", '*.commercecloud.salesforce.com', 'data:'],
-                    'script-src': ["'self'", "'unsafe-eval'", 'storage.googleapis.com'],
-                    'connect-src': ["'self'", 'api.cquotient.com'],
-
-                    // Do not upgrade insecure requests for local development
-                    'upgrade-insecure-requests': isRemote() ? [] : null
+                    'img-src': [
+                        // Default source for product images - replace with your CDN
+                        '*.commercecloud.salesforce.com'
+                    ],
+                    'script-src': [
+                        // Used by the service worker in /worker/main.js
+                        'storage.googleapis.com'
+                    ],
+                    'connect-src': [
+                        // Connect to Einstein APIs
+                        'api.cquotient.com'
+                    ]
                 }
-            },
-            hsts: isRemote()
+            }
         })
     )
 
@@ -59,6 +83,7 @@ const {handler} = runtime.createHandler(options, (app) => {
         res.set('Cache-Control', `max-age=31536000`)
         res.send()
     })
+
     app.get('/robots.txt', runtime.serveStaticFile('static/robots.txt'))
     app.get('/favicon.ico', runtime.serveStaticFile('static/ico/favicon.ico'))
 
@@ -67,4 +92,4 @@ const {handler} = runtime.createHandler(options, (app) => {
 })
 // SSR requires that we export a single handler function called 'get', that
 // supports AWS use of the server that we created above.
-exports.get = handler
+export const get = handler

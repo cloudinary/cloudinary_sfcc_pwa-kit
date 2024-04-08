@@ -65,6 +65,9 @@ const validPreset = (preset) => {
 }
 
 const validProjectName = (s) => {
+    if (s.length > PROJECT_ID_MAX_LENGTH) {
+        return `Maximum length is ${PROJECT_ID_MAX_LENGTH} characters.`
+    }
     const regex = new RegExp(`^[a-zA-Z0-9-\\s]{1,${PROJECT_ID_MAX_LENGTH}}$`)
     return regex.test(s) || 'Value can only contain letters, numbers, space and hyphens.'
 }
@@ -126,6 +129,24 @@ const EXTENSIBILITY_QUESTIONS = [
     }
 ]
 
+const HYBRID_QUESTIONS = [
+    {
+        name: 'project.hybrid',
+        message: 'Do you wish to set up a phased headless rollout?',
+        type: 'list',
+        choices: [
+            {
+                name: 'No',
+                value: false
+            },
+            {
+                name: 'Yes',
+                value: true
+            }
+        ]
+    }
+]
+
 const MRT_REFERENCE_QUESTIONS = [
     {
         name: 'project.name',
@@ -165,6 +186,21 @@ const RETAIL_REACT_APP_QUESTIONS = [
         name: 'project.commerce.clientId',
         message: 'What is your SLAS Client ID?',
         validate: validClientId
+    },
+    {
+        name: 'project.commerce.isSlasPrivate',
+        message: 'Is your SLAS client private?',
+        type: 'list',
+        choices: [
+            {
+                name: 'Yes',
+                value: true
+            },
+            {
+                name: 'No',
+                value: false
+            }
+        ]
     },
     {
         name: 'project.commerce.siteId',
@@ -220,12 +256,14 @@ const PRESETS = [
         questions: [...EXTENSIBILITY_QUESTIONS, ...RETAIL_REACT_APP_QUESTIONS],
         answers: {
             ['project.extend']: true,
+            ['project.hybrid']: false,
             ['project.name']: 'demo-storefront',
             ['project.commerce.instanceUrl']: 'https://zzte-053.dx.commercecloud.salesforce.com',
             ['project.commerce.clientId']: '1d763261-6522-4913-9d52-5d947d3b94c4',
             ['project.commerce.siteId']: 'RefArch',
             ['project.commerce.organizationId']: 'f_ecom_zzte_053',
             ['project.commerce.shortCode']: 'kv7kzm78',
+            ['project.commerce.isSlasPrivate']: false,
             ['project.einstein.clientId']: '1ea06c6e-c936-4324-bcf0-fada93f83bb1',
             ['project.einstein.siteId']: 'aaij-MobileFirst'
         },
@@ -243,14 +281,91 @@ const PRESETS = [
         questions: [...EXTENSIBILITY_QUESTIONS, ...RETAIL_REACT_APP_QUESTIONS],
         answers: {
             ['project.extend']: true,
+            ['project.hybrid']: false,
             ['project.name']: 'retail-react-app',
             ['project.commerce.instanceUrl']: 'https://zzrf-001.dx.commercecloud.salesforce.com',
             ['project.commerce.clientId']: 'c9c45bfd-0ed3-4aa2-9971-40f88962b836',
             ['project.commerce.siteId']: 'RefArch',
             ['project.commerce.organizationId']: 'f_ecom_zzrf_001',
             ['project.commerce.shortCode']: 'kv7kzm78',
+            ['project.commerce.isSlasPrivate']: false,
             ['project.einstein.clientId']: '1ea06c6e-c936-4324-bcf0-fada93f83bb1',
             ['project.einstein.siteId']: 'aaij-MobileFirst'
+        },
+        assets: ['translations'],
+        private: true
+    },
+    {
+        id: 'retail-react-app-private-slas-client',
+        name: 'Retail React App Private SLAS client project',
+        description: '',
+        templateSource: {
+            type: TEMPLATE_SOURCE_NPM,
+            id: '@salesforce/retail-react-app'
+        },
+        questions: [...EXTENSIBILITY_QUESTIONS, ...RETAIL_REACT_APP_QUESTIONS],
+        answers: {
+            ['project.extend']: true,
+            ['project.hybrid']: false,
+            ['project.name']: 'retail-react-app',
+            ['project.commerce.instanceUrl']: 'https://zzrf-002.dx.commercecloud.salesforce.com',
+            ['project.commerce.clientId']: '89655706-9a0d-49ba-a1e5-18bb2d616374',
+            ['project.commerce.siteId']: 'RefArch',
+            ['project.commerce.organizationId']: 'f_ecom_zzrf_002',
+            ['project.commerce.shortCode']: 'kv7kzm78',
+            ['project.commerce.isSlasPrivate']: true,
+            ['project.einstein.clientId']: '1ea06c6e-c936-4324-bcf0-fada93f83bb1',
+            ['project.einstein.siteId']: 'aaij-MobileFirst'
+        },
+        assets: ['translations'],
+        private: true
+    },
+    {
+        id: 'retail-react-app-hybrid-test-project',
+        name: 'Retail React App Hybrid Test Private SLAS Project',
+        description: '',
+        templateSource: {
+            type: TEMPLATE_SOURCE_NPM,
+            id: '@salesforce/retail-react-app'
+        },
+        questions: [...EXTENSIBILITY_QUESTIONS, ...HYBRID_QUESTIONS, ...RETAIL_REACT_APP_QUESTIONS],
+        answers: {
+            ['project.extend']: true,
+            ['project.hybrid']: true,
+            ['project.name']: 'retail-react-app',
+            ['project.commerce.instanceUrl']: 'https://test.phased-launch-testing.com/',
+            ['project.commerce.clientId']: '99b4e081-00cf-454a-95b0-26ac2b824931',
+            ['project.commerce.siteId']: 'RefArch',
+            ['project.commerce.organizationId']: 'f_ecom_bdpx_dev',
+            ['project.commerce.shortCode']: 'xitgmcd3',
+            ['project.einstein.clientId']: '1ea06c6e-c936-4324-bcf0-fada93f83bb1',
+            ['project.einstein.siteId']: 'aaij-MobileFirst',
+            ['project.commerce.isSlasPrivate']: true
+        },
+        assets: ['translations'],
+        private: true
+    },
+    {
+        id: 'retail-react-app-hybrid-public-client-test-project',
+        name: 'Retail React App Hybrid Test Public SLAS client project',
+        description: '',
+        templateSource: {
+            type: TEMPLATE_SOURCE_NPM,
+            id: '@salesforce/retail-react-app'
+        },
+        questions: [...EXTENSIBILITY_QUESTIONS, ...HYBRID_QUESTIONS, ...RETAIL_REACT_APP_QUESTIONS],
+        answers: {
+            ['project.extend']: true,
+            ['project.hybrid']: true,
+            ['project.name']: 'retail-react-app',
+            ['project.commerce.instanceUrl']: 'https://www.phased-launch-testing.com/',
+            ['project.commerce.clientId']: 'e7e22b7f-a904-4f3a-8022-49dbee696485',
+            ['project.commerce.siteId']: 'RefArch',
+            ['project.commerce.organizationId']: 'f_ecom_bjnl_prd',
+            ['project.commerce.shortCode']: 'performance-001',
+            ['project.einstein.clientId']: '1ea06c6e-c936-4324-bcf0-fada93f83bb1',
+            ['project.einstein.siteId']: 'aaij-MobileFirst',
+            ['project.commerce.isSlasPrivate']: false
         },
         assets: ['translations'],
         private: true

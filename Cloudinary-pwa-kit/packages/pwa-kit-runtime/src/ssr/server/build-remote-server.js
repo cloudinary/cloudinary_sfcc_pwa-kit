@@ -11,7 +11,8 @@ import {
     X_MOBIFY_QUERYSTRING,
     SET_COOKIE,
     CACHE_CONTROL,
-    NO_CACHE
+    NO_CACHE,
+    SLAS_CUSTOM_PROXY_PATH
 } from './constants'
 import {
     catchAndLog,
@@ -22,7 +23,8 @@ import {
     processLambdaResponse,
     responseSend,
     configureProxyConfigs,
-    setQuiet
+    setQuiet,
+    localDevLog
 } from '../../utils/ssr-server'
 import dns from 'dns'
 import express from 'express'
@@ -38,9 +40,11 @@ import {RESOLVED_PROMISE} from './express'
 import http from 'http'
 import https from 'https'
 import {proxyConfigs, updatePackageMobify} from '../../utils/ssr-shared'
+import {applyProxyRequestHeaders} from '../../utils/ssr-server/configure-proxy'
 import awsServerlessExpress from 'aws-serverless-express'
 import expressLogging from 'morgan'
 import {morganStream} from '../../utils/morgan-stream'
+import {createProxyMiddleware} from 'http-proxy-middleware'
 
 /**
  * An Array of mime-types (Content-Type values) that are considered
@@ -112,7 +116,19 @@ export const RemoteServerFactory = {
             // be no use-case for SDK users to set this.
             strictSSL: true,
 
-            mobify: undefined
+            mobify: undefined,
+
+            // Toggle cookies being passed and set
+            localAllowCookies: false,
+
+            // Toggle for setting up the custom SLAS private client secret handler
+            useSLASPrivateClient: false,
+
+            // A regex for identifying which SLAS endpoints the custom SLAS private
+            // client secret handler will inject an Authorization header.
+            // Do not modify unless a project wants to customize additional SLAS
+            // endpoints that we currently do not support (ie. /oauth2/passwordless/token)
+            applySLASPrivateClientToEndpoints: /\/oauth2\/token/
         }
 
         options = Object.assign({}, defaults, options)
@@ -138,6 +154,15 @@ export const RemoteServerFactory = {
         // This is the ORIGIN under which we are serving the page.
         // because it's an origin, it does not end with a slash.
         options.appOrigin = process.env.APP_ORIGIN = `${options.protocol}://${options.appHostname}`
+
+        // Toggle cookies being passed and set. Can be overridden locally,
+        // always uses MRT_ALLOW_COOKIES env remotely
+        options.allowCookies = this._getAllowCookies(options)
+
+        // For test only – configure the SLAS private client secret proxy endpoint
+        options.slasHostName = this._getSlasEndpoint(options)
+        options.slasTarget = options.slasTarget || `https://${options.slasHostName}`
+
         return options
     },
 
@@ -147,6 +172,14 @@ export const RemoteServerFactory = {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _logStartupMessage(options) {
         // Hook for the DevServer
+    },
+
+    /**
+     * @private
+     */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _getAllowCookies(options) {
+        return 'MRT_ALLOW_COOKIES' in process.env ? process.env.MRT_ALLOW_COOKIES == 'true' : false
     },
 
     /**
@@ -170,6 +203,15 @@ export const RemoteServerFactory = {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _strictSSL(options) {
         return true
+    },
+
+    /**
+     * @private
+     */
+    _getSlasEndpoint(options) {
+        if (!options.useSLASPrivateClient) return undefined
+        const shortCode = options.mobify?.app?.commerceAPI?.parameters?.shortCode
+        return `${shortCode}.api.commercecloud.salesforce.com`
     },
 
     /**
@@ -282,6 +324,8 @@ export const RemoteServerFactory = {
         this._setupMetricsFlushing(app)
         this._setupHealthcheck(app)
         this._setupProxying(app, options)
+
+        this._setupSlasPrivateClientProxy(app, options)
 
         // Beyond this point, we know that this is not a proxy request
         // and not a bundle request, so we can apply specific
@@ -577,6 +621,66 @@ export const RemoteServerFactory = {
                     'Environment proxies are not set: https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/proxying-requests.html'
             })
         })
+    },
+
+    /**
+     * @private
+     */
+    _handleMissingSlasPrivateEnvVar(app) {
+        app.use(SLAS_CUSTOM_PROXY_PATH, (_, res) => {
+            return res.status(501).json({
+                message:
+                    'Environment variable PWA_KIT_SLAS_CLIENT_SECRET not set: Please set this environment variable to proceed.'
+            })
+        })
+    },
+
+    /**
+     * @private
+     */
+    _setupSlasPrivateClientProxy(app, options) {
+        if (!options.useSLASPrivateClient) {
+            return
+        }
+        localDevLog(`Proxying ${SLAS_CUSTOM_PROXY_PATH} to ${options.slasTarget}`)
+
+        const clientId = options.mobify?.app?.commerceAPI?.parameters?.clientId
+        const clientSecret = process.env.PWA_KIT_SLAS_CLIENT_SECRET
+        if (!clientSecret) {
+            this._handleMissingSlasPrivateEnvVar(app)
+            return
+        }
+
+        const encodedSlasCredentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+
+        app.use(
+            SLAS_CUSTOM_PROXY_PATH,
+            createProxyMiddleware({
+                target: options.slasTarget,
+                changeOrigin: true,
+                pathRewrite: {[SLAS_CUSTOM_PROXY_PATH]: ''},
+                onProxyReq: (proxyRequest, incomingRequest) => {
+                    applyProxyRequestHeaders({
+                        proxyRequest,
+                        incomingRequest,
+                        proxyPath: SLAS_CUSTOM_PROXY_PATH,
+                        targetHost: options.slasHostName,
+                        targetProtocol: 'https'
+                    })
+
+                    // We pattern match and add client secrets only to endpoints that
+                    // match the regex specified by options.applySLASPrivateClientToEndpoints.
+                    // By default, this regex matches only calls to SLAS /oauth2/token
+                    // (see option defaults at the top of this file).
+                    // Other SLAS endpoints, ie. SLAS authenticate (/oauth2/login) and
+                    // SLAS logout (/oauth2/logout), use the Authorization header for a different
+                    // purpose so we don't want to overwrite the header for those calls.
+                    if (incomingRequest.path?.match(options.applySLASPrivateClientToEndpoints)) {
+                        proxyRequest.setHeader('Authorization', `Basic ${encodedSlasCredentials}`)
+                    }
+                }
+            })
+        )
     },
 
     /**
@@ -899,6 +1003,9 @@ export const RemoteServerFactory = {
      * contain both the certificate and the private key.
      * @param {function} customizeApp - a callback that takes an express app
      * as an argument. Use this to customize the server.
+     * @param {Boolean} [options.allowCookies] - This boolean value indicates
+     * whether or not we strip cookies from requests and block setting of cookies. Defaults
+     * to 'false'.
      */
     createHandler(options, customizeApp) {
         process.on('unhandledRejection', catchAndLog)
@@ -920,8 +1027,9 @@ export const RemoteServerFactory = {
  * ExpressJS middleware that processes any non-proxy request passing
  * through the Express app.
  *
- * Strips Cookie headers from incoming requests, and configures the
- * Response so that it cannot have cookies set on it.
+ * If allowCookies is false, strips Cookie headers from incoming requests, and
+ * configures the Response so that it cannot have cookies set on it.
+ *
  * Sets the Host header to the application host.
  * If there's an Origin header, rewrites it to be the application
  * Origin.
@@ -933,8 +1041,27 @@ export const RemoteServerFactory = {
  */
 const prepNonProxyRequest = (req, res, next) => {
     const options = req.app.options
-    // Strip cookies from the request
-    delete req.headers.cookie
+    if (!options.allowCookies) {
+        // Strip cookies from the request
+        delete req.headers.cookie
+        // In an Express Response, all cookie setting ends up
+        // calling setHeader, so we override that to allow us
+        // to intercept and discard cookie setting.
+        const setHeader = Object.getPrototypeOf(res).setHeader
+        const remote = isRemote()
+        res.setHeader = function (header, value) {
+            /* istanbul ignore else */
+            if (header && header.toLowerCase() !== SET_COOKIE && value) {
+                setHeader.call(this, header, value)
+            } /* istanbul ignore else */ else if (!remote) {
+                console.warn(
+                    `Req ${res.locals.requestId}: ` +
+                        `Cookies cannot be set on responses sent from ` +
+                        `the SSR Server. Discarding "Set-Cookie: ${value}"`
+                )
+            }
+        }
+    }
 
     // Set the Host header
     req.headers.host = options.appHostname
@@ -944,23 +1071,6 @@ const prepNonProxyRequest = (req, res, next) => {
         req.headers.origin = options.appOrigin
     }
 
-    // In an Express Response, all cookie setting ends up
-    // calling setHeader, so we override that to allow us
-    // to intercept and discard cookie setting.
-    const setHeader = Object.getPrototypeOf(res).setHeader
-    const remote = isRemote()
-    res.setHeader = function (header, value) {
-        /* istanbul ignore else */
-        if (header && header.toLowerCase() !== SET_COOKIE && value) {
-            setHeader.call(this, header, value)
-        } /* istanbul ignore else */ else if (!remote) {
-            console.warn(
-                `Req ${res.locals.requestId}: ` +
-                    `Cookies cannot be set on responses sent from ` +
-                    `the SSR Server. Discarding "Set-Cookie: ${value}"`
-            )
-        }
-    }
     next()
 }
 

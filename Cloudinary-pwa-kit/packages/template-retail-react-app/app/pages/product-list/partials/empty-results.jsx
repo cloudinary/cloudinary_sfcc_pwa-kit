@@ -6,7 +6,13 @@
  */
 
 import React, {Fragment} from 'react'
-import {Button, Text, Flex, Stack, Link} from '@chakra-ui/react'
+import {
+    Button,
+    Text,
+    Flex,
+    Stack,
+    Link
+} from '@salesforce/retail-react-app/app/components/shared/ui'
 import PropTypes from 'prop-types'
 import {Link as RouteLink} from 'react-router-dom'
 import {defineMessage, FormattedMessage, useIntl} from 'react-intl'
@@ -42,7 +48,7 @@ const EmptySearchResults = ({searchQuery, category}) => {
                                     'We couldn’t find anything for {category}. Try searching for a product or {link}.'
                             },
                             {
-                                category: category.name,
+                                category: category?.name,
                                 link: (
                                     <Link as={RouteLink} to={'/'}>
                                         {intl.formatMessage(contactUsMessage)}

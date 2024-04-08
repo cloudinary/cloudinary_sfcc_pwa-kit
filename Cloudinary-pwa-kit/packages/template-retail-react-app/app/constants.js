@@ -6,6 +6,7 @@
  */
 
 import {defineMessage} from 'react-intl'
+import {noop} from '@salesforce/retail-react-app/app/utils/utils'
 
 // Global app defaults
 export const DEFAULT_LOCALE = 'en-US'
@@ -81,6 +82,11 @@ export const TOAST_MESSAGE_ADDED_TO_WISHLIST = defineMessage({
     defaultMessage: '{quantity} {quantity, plural, one {item} other {items}} added to wishlist'
 })
 
+export const TOAST_MESSAGE_ALREADY_IN_WISHLIST = defineMessage({
+    id: 'global.info.already_in_wishlist',
+    defaultMessage: 'Item is already in wishlist'
+})
+
 export const TOAST_MESSAGE_REMOVED_ITEM_FROM_CART = defineMessage({
     defaultMessage: 'Item removed from cart',
     id: 'cart.info.removed_from_cart'
@@ -106,4 +112,29 @@ export const EINSTEIN_RECOMMENDERS = {
     PDP_RECENTLY_VIEWED: 'viewed-recently-einstein',
     EMPTY_SEARCH_RESULTS_TOP_SELLERS: 'home-top-revenue-for-category',
     EMPTY_SEARCH_RESULTS_MOST_VIEWED: 'products-in-all-categories'
+}
+
+export const SHIPPING_COUNTRY_CODES = [
+    {value: 'CA', label: 'Canada'},
+    {value: 'US', label: 'United States'}
+]
+
+// Constant to Enable Active Data
+export const ACTIVE_DATA_ENABLED = false
+
+export const REMOVE_UNAVAILABLE_CART_ITEM_DIALOG_CONFIG = {
+    dialogTitle: defineMessage({
+        defaultMessage: 'Items Unavailable',
+        id: 'confirmation_modal.remove_cart_item.title.items_unavailable'
+    }),
+    confirmationMessage: defineMessage({
+        defaultMessage:
+            'Some items are no longer available online and will be removed from your cart.',
+        id: 'confirmation_modal.remove_cart_item.message.need_to_remove_due_to_unavailability'
+    }),
+    primaryActionLabel: defineMessage({
+        defaultMessage: 'Remove',
+        id: 'confirmation_modal.remove_cart_item.action.remove'
+    }),
+    onPrimaryAction: noop
 }

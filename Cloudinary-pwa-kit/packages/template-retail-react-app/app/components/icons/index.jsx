@@ -4,8 +4,10 @@
  * SPDX-License-Identifier: BSD-3-Clause
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
-import React, {forwardRef} from 'react'
-import {Icon, useTheme} from '@chakra-ui/react'
+import React, {forwardRef, useContext} from 'react'
+import {defineMessage, IntlContext} from 'react-intl'
+import PropTypes from 'prop-types'
+import {Icon, useTheme} from '@salesforce/retail-react-app/app/components/shared/ui'
 
 // Our own SVG imports. These will be extracted to a single sprite sheet by the
 // svg-sprite-loader webpack plugin at build time and injected in the <body> tag
@@ -54,7 +56,6 @@ import '@salesforce/retail-react-app/app/assets/svg/visibility-off.svg'
 import '@salesforce/retail-react-app/app/assets/svg/heart.svg'
 import '@salesforce/retail-react-app/app/assets/svg/heart-solid.svg'
 import '@salesforce/retail-react-app/app/assets/svg/close.svg'
-import '@salesforce/retail-react-app/app/assets/svg/close.svg'
 
 // For non-square SVGs, we can use the symbol data from the import to set the
 // proper viewBox attribute on the Icon wrapper.
@@ -83,22 +84,51 @@ VisaSymbol.viewBox = VisaSymbol.viewBox || '0 0 38 22'
 /**
  * A helper for creating a Chakra-wrapped icon from our own SVG imports via sprite sheet.
  * @param {string} name - the filename of the imported svg (does not include extension)
+ * @param {Object} passProps - props that will be passed onto the underlying Icon component
+ * @param {Object} localizationAttributes - attributes with localized values that will be passed
+ *      onto the underlying Icon component, use `defineMessage` to create localized string.
+ *      Additionally, if the icon is rendered outside the provider tree, you'll also need to
+ *      pass an intl object from react-intl as a prop to translate the messages.
  */
 /* istanbul ignore next */
-const icon = (name, passProps) => {
+export const icon = (name, passProps, localizationAttributes) => {
     const displayName = name
         .toLowerCase()
         .replace(/(?:^|[\s-/])\w/g, (match) => match.toUpperCase())
         .replace(/-/g, '')
     const component = forwardRef((props, ref) => {
         const theme = useTheme()
+        // NOTE: We want to avoid `useIntl` here because that throws when <IntlProvider> is not in
+        // the component ancestry, but we only enforce `intl` if we have `localizationAttributes`.
+        let intl = useContext(IntlContext)
+        if (localizationAttributes) {
+            if (props?.intl) {
+                const {intl: intlProp, ...otherProps} = props
+                // Allow `props.intl` to take precedence over the intl we found
+                intl = intlProp
+                props = otherProps
+            }
+            if (!intl) {
+                throw new Error(
+                    'To localize messages, you must either have <IntlProvider> in the component ancestry or provide `intl` as a prop'
+                )
+            }
+            Object.keys(localizationAttributes).forEach((key) => {
+                passProps[key] = intl.formatMessage(localizationAttributes[key])
+            })
+        }
         const baseStyle = theme?.components?.Icon?.baseStyle
         return (
-            <Icon ref={ref} {...baseStyle} {...passProps} {...props}>
+            <Icon ref={ref} role="img" aria-label={name} {...baseStyle} {...props} {...passProps}>
                 <use role="presentation" xlinkHref={`#${name}`} />
             </Icon>
         )
     })
+
+    component.propTypes = {
+        intl: PropTypes.object
+    }
+
     component.displayName = `${displayName}Icon`
     return component
 }
@@ -134,7 +164,19 @@ export const GithubLogo = icon('github-logo')
 export const HamburgerIcon = icon('hamburger')
 export const InfoIcon = icon('info')
 export const LikeIcon = icon('like')
-export const LockIcon = icon('lock')
+export const LockIcon = icon(
+    'lock',
+    {
+        'aria-hidden': false,
+        focusable: true
+    },
+    {
+        'aria-label': defineMessage({
+            id: 'icons.assistive_msg.lock',
+            defaultMessage: 'Secure'
+        })
+    }
+)
 export const LocationIcon = icon('location')
 export const PaypalIcon = icon('paypal', {viewBox: PaypalSymbol.viewBox})
 export const PlugIcon = icon('plug')

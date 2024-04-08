@@ -11,7 +11,7 @@ import {Helmet} from 'react-helmet'
 import {FormattedMessage, useIntl} from 'react-intl'
 
 // Components
-import {Box, Button, Stack} from '@chakra-ui/react'
+import {Box, Button, Stack} from '@salesforce/retail-react-app/app/components/shared/ui'
 import {
     useProduct,
     useCategory,
@@ -25,11 +25,14 @@ import {useCurrentBasket} from '@salesforce/retail-react-app/app/hooks/use-curre
 import {useVariant} from '@salesforce/retail-react-app/app/hooks'
 import useNavigation from '@salesforce/retail-react-app/app/hooks/use-navigation'
 import useEinstein from '@salesforce/retail-react-app/app/hooks/use-einstein'
+import useActiveData from '@salesforce/retail-react-app/app/hooks/use-active-data'
 import {useServerContext} from '@salesforce/pwa-kit-react-sdk/ssr/universal/hooks'
 // Project Components
 import RecommendedProducts from '@salesforce/retail-react-app/app/components/recommended-products'
 import ProductView from '@salesforce/retail-react-app/app/components/product-view'
 import InformationAccordion from '@salesforce/retail-react-app/app/pages/product-detail/partials/information-accordion'
+
+import {HTTPNotFound, HTTPError} from '@salesforce/pwa-kit-react-sdk/ssr/universal/errors'
 
 // constant
 import {
@@ -37,7 +40,8 @@ import {
     EINSTEIN_RECOMMENDERS,
     MAX_CACHE_AGE,
     TOAST_ACTION_VIEW_WISHLIST,
-    TOAST_MESSAGE_ADDED_TO_WISHLIST
+    TOAST_MESSAGE_ADDED_TO_WISHLIST,
+    TOAST_MESSAGE_ALREADY_IN_WISHLIST
 } from '@salesforce/retail-react-app/app/constants'
 import {rebuildPathWithParams} from '@salesforce/retail-react-app/app/utils/url'
 import {useHistory, useLocation, useParams} from 'react-router-dom'
@@ -49,6 +53,7 @@ const ProductDetail = () => {
     const history = useHistory()
     const location = useLocation()
     const einstein = useEinstein()
+    const activeData = useActiveData()
     const toast = useToast()
     const navigate = useNavigation()
     const [productSetSelection, setProductSetSelection] = useState({})
@@ -59,13 +64,19 @@ const ProductDetail = () => {
     const addItemToBasketMutation = useShopperBasketsMutation('addItemToBasket')
     const {res} = useServerContext()
     if (res) {
-        res.set('Cache-Control', `max-age=${MAX_CACHE_AGE}`)
+        res.set('Cache-Control', `s-maxage=${MAX_CACHE_AGE}`)
     }
+    const isBasketLoading = !basket?.basketId
 
     /*************************** Product Detail and Category ********************/
     const {productId} = useParams()
     const urlParams = new URLSearchParams(location.search)
-    const {data: product, isLoading: isProductLoading} = useProduct(
+    const {
+        data: product,
+        isLoading: isProductLoading,
+        isError: isProductError,
+        error: productError
+    } = useProduct(
         {
             parameters: {
                 id: urlParams.get('pid') || productId,
@@ -78,15 +89,43 @@ const ProductDetail = () => {
             keepPreviousData: true
         }
     )
-    const isProductASet = product?.type.set
+
     // Note: Since category needs id from product detail, it can't be server side rendered atm
     // until we can do dependent query on server
-    const {data: category} = useCategory({
+    const {
+        data: category,
+        isError: isCategoryError,
+        error: categoryError
+    } = useCategory({
         parameters: {
             id: product?.primaryCategoryId,
-            level: 1
+            levels: 1
         }
     })
+
+    /**************** Error Handling ****************/
+
+    if (isProductError) {
+        const errorStatus = productError?.response?.status
+        switch (errorStatus) {
+            case 404:
+                throw new HTTPNotFound('Product Not Found.')
+            default:
+                throw new HTTPError(`HTTP Error ${errorStatus} occurred.`)
+        }
+    }
+    if (isCategoryError) {
+        const errorStatus = categoryError?.response?.status
+        switch (errorStatus) {
+            case 404:
+                throw new HTTPNotFound('Category Not Found.')
+            default:
+                throw new HTTPError(`HTTP Error ${errorStatus} occurred.`)
+        }
+    }
+
+    const isProductASet = product?.type.set
+
     const [primaryCategory, setPrimaryCategory] = useState(category)
     const variant = useVariant(product)
     // This page uses the `primaryCategoryId` to retrieve the category data. This attribute
@@ -120,43 +159,62 @@ const ProductDetail = () => {
     )
 
     const handleAddToWishlist = (product, variant, quantity) => {
-        createCustomerProductListItem.mutate(
-            {
-                parameters: {
-                    listId: wishlist.id,
-                    customerId
-                },
-                body: {
-                    // NOTE: APi does not respect quantity, it always adds 1
-                    quantity,
-                    productId: variant?.productId || product?.id,
-                    public: false,
-                    priority: 1,
-                    type: 'product'
-                }
-            },
-            {
-                onSuccess: () => {
-                    toast({
-                        title: formatMessage(TOAST_MESSAGE_ADDED_TO_WISHLIST, {quantity: 1}),
-                        status: 'success',
-                        action: (
-                            // it would be better if we could use <Button as={Link}>
-                            // but unfortunately the Link component is not compatible
-                            // with Chakra Toast, since the ToastManager is rendered via portal
-                            // and the toast doesn't have access to intl provider, which is a
-                            // requirement of the Link component.
-                            <Button variant="link" onClick={() => navigate('/account/wishlist')}>
-                                {formatMessage(TOAST_ACTION_VIEW_WISHLIST)}
-                            </Button>
-                        )
-                    })
-                },
-                onError: () => {
-                    showError()
-                }
-            }
+        const isItemInWishlist = wishlist?.customerProductListItems?.find(
+            (i) => i.productId === variant?.productId || i.productId === product?.id
         )
+
+        if (!isItemInWishlist) {
+            createCustomerProductListItem.mutate(
+                {
+                    parameters: {
+                        listId: wishlist.id,
+                        customerId
+                    },
+                    body: {
+                        // NOTE: APi does not respect quantity, it always adds 1
+                        quantity,
+                        productId: variant?.productId || product?.id,
+                        public: false,
+                        priority: 1,
+                        type: 'product'
+                    }
+                },
+                {
+                    onSuccess: () => {
+                        toast({
+                            title: formatMessage(TOAST_MESSAGE_ADDED_TO_WISHLIST, {quantity: 1}),
+                            status: 'success',
+                            action: (
+                                // it would be better if we could use <Button as={Link}>
+                                // but unfortunately the Link component is not compatible
+                                // with Chakra Toast, since the ToastManager is rendered via portal
+                                // and the toast doesn't have access to intl provider, which is a
+                                // requirement of the Link component.
+                                <Button
+                                    variant="link"
+                                    onClick={() => navigate('/account/wishlist')}
+                                >
+                                    {formatMessage(TOAST_ACTION_VIEW_WISHLIST)}
+                                </Button>
+                            )
+                        })
+                    },
+                    onError: () => {
+                        showError()
+                    }
+                }
+            )
+        } else {
+            toast({
+                title: formatMessage(TOAST_MESSAGE_ALREADY_IN_WISHLIST),
+                status: 'info',
+                action: (
+                    <Button variant="link" onClick={() => navigate('/account/wishlist')}>
+                        {formatMessage(TOAST_ACTION_VIEW_WISHLIST)}
+                    </Button>
+                )
+            })
+        }
     }
 
     /**************** Add To Cart ****************/
@@ -236,10 +294,20 @@ const ProductDetail = () => {
             einstein.sendViewProduct(product)
             const childrenProducts = product.setProducts
             childrenProducts.map((child) => {
-                einstein.sendViewProduct(child)
+                try {
+                    einstein.sendViewProduct(child)
+                } catch (err) {
+                    console.error(err)
+                }
+                activeData.sendViewProduct(category, child, 'detail')
             })
         } else if (product) {
-            einstein.sendViewProduct(product)
+            try {
+                einstein.sendViewProduct(product)
+            } catch (err) {
+                console.error(err)
+            }
+            activeData.sendViewProduct(category, product, 'detail')
         }
     }, [product])
 
@@ -264,6 +332,7 @@ const ProductDetail = () => {
                             addToCart={handleProductSetAddToCart}
                             addToWishlist={handleAddToWishlist}
                             isProductLoading={isProductLoading}
+                            isBasketLoading={isBasketLoading}
                             isWishlistLoading={isWishlistLoading}
                             validateOrderability={handleProductSetValidation}
                         />
@@ -310,6 +379,7 @@ const ProductDetail = () => {
                                             }
                                         }}
                                         isProductLoading={isProductLoading}
+                                        isBasketLoading={isBasketLoading}
                                         isWishlistLoading={isWishlistLoading}
                                     />
                                     <InformationAccordion product={childProduct} />
@@ -331,6 +401,7 @@ const ProductDetail = () => {
                             }
                             addToWishlist={handleAddToWishlist}
                             isProductLoading={isProductLoading}
+                            isBasketLoading={isBasketLoading}
                             isWishlistLoading={isWishlistLoading}
                         />
                         <InformationAccordion product={product} />
@@ -367,6 +438,9 @@ const ProductDetail = () => {
                     />
 
                     <RecommendedProducts
+                        // The Recently Viewed recommender doesn't use `products`, so instead we
+                        // provide a key to update the recommendations on navigation.
+                        key={location.key}
                         title={
                             <FormattedMessage
                                 defaultMessage="Recently Viewed"

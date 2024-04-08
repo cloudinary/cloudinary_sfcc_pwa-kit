@@ -11,11 +11,16 @@ import {
     ShopperLoginTypes,
     ShopperCustomersTypes
 } from 'commerce-sdk-isomorphic'
-import jwtDecode, {JwtPayload} from 'jwt-decode'
+import {jwtDecode, JwtPayload} from 'jwt-decode'
 import {ApiClientConfigParams, Prettify, RemoveStringIndex} from '../hooks/types'
 import {BaseStorage, LocalStorage, CookieStorage, MemoryStorage, StorageType} from './storage'
 import {CustomerType} from '../hooks/useCustomerType'
-import {onClient} from '../utils'
+import {getParentOrigin, isOriginTrusted, onClient} from '../utils'
+import {
+    SLAS_SECRET_WARNING_MSG,
+    SLAS_SECRET_PLACEHOLDER,
+    SLAS_SECRET_OVERRIDE_MSG
+} from '../constant'
 
 type TokenResponse = ShopperLoginTypes.TokenResponse
 type Helpers = typeof helpers
@@ -25,6 +30,9 @@ interface AuthConfig extends ApiClientConfigParams {
     fetchOptions?: ShopperLoginTypes.FetchOptions
     fetchedToken?: string
     OCAPISessionsURL?: string
+    enablePWAKitPrivateClient?: boolean
+    clientSecret?: string
+    silenceWarnings?: boolean
 }
 
 interface JWTHeaders {
@@ -55,8 +63,7 @@ type AuthDataKeys =
     | Exclude<keyof AuthData, 'refresh_token'>
     | 'refresh_token_guest'
     | 'refresh_token_registered'
-    | 'refresh_token_guest_copy'
-    | 'refresh_token_registered_copy'
+    | 'access_token_sfra'
 
 type AuthDataMap = Record<
     AuthDataKeys,
@@ -66,6 +73,8 @@ type AuthDataMap = Record<
         callback?: (storage: BaseStorage) => void
     }
 >
+
+const isParentTrusted = isOriginTrusted(getParentOrigin())
 
 /**
  * A map of the data that this auth module stores. This maps the name of the property to
@@ -107,39 +116,41 @@ const DATA_MAP: AuthDataMap = {
     },
     refresh_token_guest: {
         storageType: 'cookie',
-        key: 'cc-nx-g',
+        key: isParentTrusted ? 'cc-nx-g-iframe' : 'cc-nx-g',
         callback: (store) => {
-            store.delete('cc-nx')
+            store.delete(isParentTrusted ? 'cc-nx-iframe' : 'cc-nx')
         }
     },
     refresh_token_registered: {
         storageType: 'cookie',
-        key: 'cc-nx',
+        key: isParentTrusted ? 'cc-nx-iframe' : 'cc-nx',
         callback: (store) => {
-            store.delete('cc-nx-g')
+            store.delete(isParentTrusted ? 'cc-nx-g-iframe' : 'cc-nx-g')
         }
     },
-    // For Hybrid setups, we need a mechanism to inform PWA Kit whenever customer login state changes on SFRA.
-    // So we maintain a copy of the refersh_tokens in the local storage which is compared to the actual refresh_token stored in cookie storage.
-    // If the key or value of the refresh_token in local storage is different from the one in cookie storage, this indicates a change in customer auth state and we invalidate the access_token in PWA Kit.
-    // This triggers a new fetch for access_token using the current refresh_token from cookie storage and makes sure customer auth state is always in sync between SFRA and PWA sites in a hybrid setup.
-    refresh_token_guest_copy: {
+    refresh_token_expires_in: {
         storageType: 'local',
-        key: 'cc-nx-g',
-        callback: (store) => {
-            store.delete('cc-nx')
-        }
-    },
-    refresh_token_registered_copy: {
-        storageType: 'local',
-        key: 'cc-nx',
-        callback: (store) => {
-            store.delete('cc-nx-g')
-        }
+        key: 'refresh_token_expires_in'
     },
     customer_type: {
         storageType: 'local',
         key: 'customer_type'
+    },
+    /*
+     * For Hybrid setups, we need a mechanism to inform PWA Kit whenever customer login state changes on SFRA.
+     * We do this by having SFRA store the access token in cookies. If these cookies are present, PWA
+     * compares the access token from the cookie with the one in local store. If the tokens are different,
+     * discard the access token in local store and replace it with the access token from the cookie.
+     *
+     * ECOM has a 1200 character limit on the values of cookies. The access token easily exceeds this amount
+     * so it sends the access token in chunks across several cookies.
+     *
+     * The JWT tends to come in at around 2250 characters so there's usually
+     * both a cc-at and cc-at_2.
+     */
+    access_token_sfra: {
+        storageType: 'cookie',
+        key: 'cc-at'
     }
 }
 
@@ -156,14 +167,19 @@ class Auth {
     private shopperCustomersClient: ShopperCustomers<ApiClientConfigParams>
     private redirectURI: string
     private pendingToken: Promise<TokenResponse> | undefined
-    private REFRESH_TOKEN_EXPIRATION_DAYS = 90
     private stores: Record<StorageType, BaseStorage>
     private fetchedToken: string
     private OCAPISessionsURL: string
+    private clientSecret: string
+    private silenceWarnings: boolean
 
     constructor(config: AuthConfig) {
+        // Special endpoint for injecting SLAS private client secret
+        const baseUrl = config.proxy.split(`/mobify/proxy/api`)[0]
+        const privateClientEndpoint = `${baseUrl}/mobify/scapi/shopper/auth`
+
         this.client = new ShopperLogin({
-            proxy: config.proxy,
+            proxy: config.enablePWAKitPrivateClient ? privateClientEndpoint : config.proxy,
             parameters: {
                 clientId: config.clientId,
                 organizationId: config.organizationId,
@@ -185,30 +201,53 @@ class Auth {
             fetchOptions: config.fetchOptions
         })
 
-        const storageOptions = {keySuffix: config.siteId}
-        const serverStorageOptions = {
+        const options = {
             keySuffix: config.siteId,
-            sharedContext: true // This allows use to reused guest authentication tokens accross lambda runs.
+            // Setting this to true on the server allows us to reuse guest auth tokens across lambda runs
+            sharedContext: !onClient()
         }
 
-        this.stores = onClient()
-            ? {
-                  cookie: new CookieStorage(storageOptions),
-                  local: new LocalStorage(storageOptions),
-                  memory: new MemoryStorage(storageOptions)
-              }
-            : {
-                  // Always use MemoryStorage on the server.
-                  cookie: new MemoryStorage(serverStorageOptions),
-                  local: new MemoryStorage(serverStorageOptions),
-                  memory: new MemoryStorage(serverStorageOptions)
-              }
+        this.stores = {
+            cookie: onClient() ? new CookieStorage(options) : new MemoryStorage(options),
+            local: onClient() ? new LocalStorage(options) : new MemoryStorage(options),
+            memory: new MemoryStorage(options)
+        }
 
         this.redirectURI = config.redirectURI
 
         this.fetchedToken = config.fetchedToken || ''
 
         this.OCAPISessionsURL = config.OCAPISessionsURL || ''
+
+        /*
+         * There are 2 ways to enable SLAS private client mode.
+         * If enablePWAKitPrivateClient=true, we route SLAS calls to /mobify/scapi/shopper/auth
+         * and set an internal placeholder as the client secret. The proxy will override the placeholder
+         * with the actual client secret so any truthy value as the placeholder works here.
+         *
+         * If enablePWAKitPrivateClient=false and clientSecret is provided as a non-empty string,
+         * private client mode is enabled but we don't route calls to /mobify/scapi/shopper/auth
+         * This is how non-PWA Kit consumers of commerce-sdk-react can enable private client and set a secret
+         *
+         * If both enablePWAKitPrivateClient and clientSecret are truthy, enablePWAKitPrivateClient takes
+         * priority and we ignore whatever was set for clientSecret. This prints a warning about the clientSecret
+         * being ignored.
+         *
+         * If both enablePWAKitPrivateClient and clientSecret are falsey, we are in SLAS public client mode.
+         */
+        if (config.enablePWAKitPrivateClient && config.clientSecret) {
+            this.logWarning(SLAS_SECRET_OVERRIDE_MSG)
+        }
+        this.clientSecret = config.enablePWAKitPrivateClient
+            ? // PWA proxy is enabled, assume project is PWA and that the proxy will handle setting the secret
+              // We can pass any truthy value here to satisfy commerce-sdk-isomorphic requirements
+              SLAS_SECRET_PLACEHOLDER
+            : // We think there are users of Commerce SDK React and Commerce SDK isomorphic outside of PWA
+              // For these users to use a private client, they must have some way to set a client secret
+              // PWA users should not need to touch this.
+              config.clientSecret || ''
+
+        this.silenceWarnings = config.silenceWarnings || false
     }
 
     get(name: AuthDataKeys) {
@@ -248,7 +287,8 @@ class Auth {
             refresh_token: this.get('refresh_token_registered') || this.get('refresh_token_guest'),
             token_type: this.get('token_type'),
             usid: this.get('usid'),
-            customer_type: this.get('customer_type') as CustomerType
+            customer_type: this.get('customer_type') as CustomerType,
+            refresh_token_expires_in: this.get('refresh_token_expires_in')
         }
     }
 
@@ -263,36 +303,54 @@ class Auth {
     }
 
     /**
-     * WARNING: This function is relevant to be used in Hybrid deployments only.
-     * Compares the refresh_token keys for guest('cc-nx-g') and registered('cc-nx') login from the cookie received from SFRA with the copy stored in localstorage on PWA Kit
-     * to determine if the login state of the shopper on SFRA site has changed. If the keys are different we return true considering the login state did change. If the keys are same,
-     * we compare the values of the refresh_token to cover an edge case where the login state might have changed multiple times on SFRA and the eventual refresh_token key might be same
-     * as that on PWA Kit which would incorrectly show both keys to be the same even though the sessions are different.
-     * @returns {boolean} true if the keys do not match (login state changed), false otherwise.
+     * Returns the SLAS access token or an empty string if the access token
+     * is not found in local store or if SFRA wants PWA to trigger refresh token login.
+     *
+     * On PWA-only sites, this returns the access token from local storage.
+     * On Hybrid sites, this checks whether SFRA has sent an auth token via cookies.
+     * Returns an access token from SFRA if it exist.
+     * If not, the access token from local store is returned.
+     *
+     * This is only used within this Auth module since other modules consider the access
+     * token from this.get('access_token') to be the source of truth.
+     *
+     * @returns {string} access token
      */
-    private hasSFRAAuthStateChanged() {
-        const refreshTokenKey =
-            (this.get('refresh_token_registered') && 'refresh_token_registered') ||
-            'refresh_token_guest'
+    private getAccessToken() {
+        let accessToken = this.get('access_token')
+        const sfraAuthToken = this.get('access_token_sfra')
 
-        const refreshTokenCopyKey =
-            (this.get('refresh_token_registered_copy') && 'refresh_token_registered_copy') ||
-            'refresh_token_guest_copy'
+        if (sfraAuthToken) {
+            /*
+             * If SFRA sends 'refresh', we return an empty token here so PWA can trigger a login refresh
+             * This key is used when logout is triggered in SFRA but the redirect after logout
+             * sends the user to PWA.
+             */
+            if (sfraAuthToken === 'refresh') {
+                this.set('access_token', '')
+                this.clearSFRAAuthToken()
+                return ''
+            }
 
-        if (DATA_MAP[refreshTokenKey].key !== DATA_MAP[refreshTokenCopyKey].key) {
-            return true
+            const {isGuest, customerId, usid} = this.parseSlasJWT(sfraAuthToken)
+            this.set('access_token', sfraAuthToken)
+            this.set('customer_id', customerId)
+            this.set('usid', usid)
+            this.set('customer_type', isGuest ? 'guest' : 'registered')
+
+            accessToken = sfraAuthToken
+            // SFRA -> PWA access token cookie handoff is succesful so we clear the SFRA made cookies.
+            // We don't want these cookies to persist and continue overriding what is in local store.
+            this.clearSFRAAuthToken()
         }
 
-        return this.get(refreshTokenKey) !== this.get(refreshTokenCopyKey)
+        return accessToken
     }
 
-    /**
-     * Used to validate JWT expiry and ensure auth state consistency with SFRA in a hybrid setup
-     * @param token access_token received on SLAS authentication
-     * @returns {boolean} true if JWT is valid; false otherwise
-     */
-    private isTokenValidForHybrid(token: string) {
-        return !this.isTokenExpired(token) && !this.hasSFRAAuthStateChanged()
+    private clearSFRAAuthToken() {
+        const {key, storageType} = DATA_MAP['access_token_sfra']
+        const store = this.stores[storageType]
+        store.delete(key)
     }
 
     /**
@@ -311,15 +369,9 @@ class Auth {
         this.set('customer_type', isGuest ? 'guest' : 'registered')
 
         const refreshTokenKey = isGuest ? 'refresh_token_guest' : 'refresh_token_registered'
-        const refreshTokenCopyKey = isGuest
-            ? 'refresh_token_guest_copy'
-            : 'refresh_token_registered_copy'
 
         this.set(refreshTokenKey, res.refresh_token, {
-            expires: this.REFRESH_TOKEN_EXPIRATION_DAYS
-        })
-        this.set(refreshTokenCopyKey, res.refresh_token, {
-            expires: this.REFRESH_TOKEN_EXPIRATION_DAYS
+            expires: res.refresh_token_expires_in
         })
     }
 
@@ -347,7 +399,13 @@ class Auth {
             .finally(() => {
                 this.pendingToken = undefined
             })
-        return this.pendingToken
+        return await this.pendingToken
+    }
+
+    logWarning = (msg: string) => {
+        if (!this.silenceWarnings) {
+            console.warn(msg)
+        }
     }
 
     /**
@@ -371,11 +429,11 @@ class Auth {
             return this.data
         }
         if (this.pendingToken) {
-            return this.pendingToken
+            return await this.pendingToken
         }
-        const accessToken = this.get('access_token')
+        const accessToken = this.getAccessToken()
 
-        if (accessToken && this.isTokenValidForHybrid(accessToken)) {
+        if (accessToken && !this.isTokenExpired(accessToken)) {
             return this.data
         }
         const refreshTokenRegistered = this.get('refresh_token_registered')
@@ -384,7 +442,14 @@ class Auth {
         if (refreshToken) {
             try {
                 return await this.queueRequest(
-                    () => helpers.refreshAccessToken(this.client, {refreshToken}),
+                    () =>
+                        helpers.refreshAccessToken(
+                            this.client,
+                            {refreshToken},
+                            {
+                                clientSecret: this.clientSecret
+                            }
+                        ),
                     !!refreshTokenGuest
                 )
             } catch (error) {
@@ -401,10 +466,7 @@ class Auth {
                 }
             }
         }
-        return this.queueRequest(
-            () => helpers.loginGuestUser(this.client, {redirectURI: this.redirectURI}),
-            true
-        )
+        return this.loginGuestUser()
     }
 
     /**
@@ -426,17 +488,25 @@ class Auth {
      *
      */
     async loginGuestUser() {
-        const redirectURI = this.redirectURI
+        if (this.clientSecret && onClient() && this.clientSecret !== SLAS_SECRET_PLACEHOLDER) {
+            this.logWarning(SLAS_SECRET_WARNING_MSG)
+        }
         const usid = this.get('usid')
         const isGuest = true
-        return this.queueRequest(
-            () =>
-                helpers.loginGuestUser(this.client, {
-                    redirectURI,
-                    ...(usid && {usid})
-                }),
-            isGuest
-        )
+        const guestPrivateArgs = [
+            this.client,
+            {...(usid && {usid})},
+            {clientSecret: this.clientSecret}
+        ] as const
+        const guestPublicArgs = [
+            this.client,
+            {redirectURI: this.redirectURI, ...(usid && {usid})}
+        ] as const
+        const callback = this.clientSecret
+            ? () => helpers.loginGuestUserPrivate(...guestPrivateArgs)
+            : () => helpers.loginGuestUser(...guestPublicArgs)
+
+        return await this.queueRequest(callback, isGuest)
     }
 
     /**
@@ -445,15 +515,15 @@ class Auth {
      */
     async register(body: ShopperCustomersTypes.CustomerRegistration) {
         const {
-            customer: {email},
+            customer: {login},
             password
         } = body
 
-        // email is optional field from isomorphic library
+        // login is optional field from isomorphic library
         // type CustomerRegistration
         // here we had to guard it to avoid ts error
-        if (!email) {
-            throw new Error('Customer registration is missing email address.')
+        if (!login) {
+            throw new Error('Customer registration is missing login field.')
         }
 
         const res = await this.shopperCustomersClient.registerCustomer({
@@ -462,7 +532,10 @@ class Auth {
             },
             body
         })
-        await this.loginRegisteredUserB2C({username: email, password})
+        await this.loginRegisteredUserB2C({
+            username: login,
+            password
+        })
         return res
     }
 
@@ -471,13 +544,23 @@ class Auth {
      *
      */
     async loginRegisteredUserB2C(credentials: Parameters<Helpers['loginRegisteredUserB2C']>[1]) {
+        if (this.clientSecret && onClient() && this.clientSecret !== SLAS_SECRET_PLACEHOLDER) {
+            this.logWarning(SLAS_SECRET_WARNING_MSG)
+        }
         const redirectURI = this.redirectURI
         const usid = this.get('usid')
         const isGuest = false
-        const token = await helpers.loginRegisteredUserB2C(this.client, credentials, {
-            redirectURI,
-            ...(usid && {usid})
-        })
+        const token = await helpers.loginRegisteredUserB2C(
+            this.client,
+            {
+                ...credentials,
+                clientSecret: this.clientSecret
+            },
+            {
+                redirectURI,
+                ...(usid && {usid})
+            }
+        )
         this.handleTokenResponse(token, isGuest)
         if (onClient() && this.OCAPISessionsURL) {
             void this.createOCAPISession()
@@ -496,7 +579,7 @@ class Auth {
             refreshToken: this.get('refresh_token_registered')
         })
         this.clearStorage()
-        return this.loginGuestUser()
+        return await this.loginGuestUser()
     }
 
     /**

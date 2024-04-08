@@ -8,7 +8,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import {FormattedMessage, FormattedNumber} from 'react-intl'
-import {Flex, Stack, Text} from '@chakra-ui/react'
+import {Flex, Stack, Text} from '@salesforce/retail-react-app/app/components/shared/ui'
 import {useItemVariant} from '@salesforce/retail-react-app/app/components/item-variant'
 import PromoPopover from '@salesforce/retail-react-app/app/components/promo-popover'
 import {useCurrency} from '@salesforce/retail-react-app/app/hooks'
@@ -76,11 +76,14 @@ const ItemAttributes = ({includeQuantity, currency, ...props}) => {
                             id="item_attributes.label.promotions"
                         />
                         {': '}
-                        <Text as="span" color="green.500">
+                        <Text as="span" color="green.700">
                             <FormattedNumber
                                 style="currency"
                                 currency={currency || basket?.currency || activeCurrency}
-                                value={variant.priceAdjustments[0].price}
+                                value={variant.priceAdjustments.reduce(
+                                    (acc, adj) => acc + (adj.price ?? 0),
+                                    0
+                                )}
                             />
                         </Text>
                     </Text>

@@ -6,7 +6,16 @@
  */
 import React, {useEffect} from 'react'
 import {FormattedMessage, FormattedNumber, useIntl} from 'react-intl'
-import {Box, Button, Container, Flex, Radio, RadioGroup, Stack, Text} from '@chakra-ui/react'
+import {
+    Box,
+    Button,
+    Container,
+    Flex,
+    Radio,
+    RadioGroup,
+    Stack,
+    Text
+} from '@salesforce/retail-react-app/app/components/shared/ui'
 import {useForm, Controller} from 'react-hook-form'
 import {useCheckout} from '@salesforce/retail-react-app/app/pages/checkout/util/checkout-context'
 import {ChevronDownIcon} from '@salesforce/retail-react-app/app/components/icons'
@@ -36,7 +45,7 @@ export default function ShippingOptions() {
             }
         },
         {
-            enabled: Boolean(basket?.basketId) && step === STEPS.ShippingOptions
+            enabled: Boolean(basket?.basketId) && step === STEPS.SHIPPING_OPTIONS
         }
     )
 
@@ -142,7 +151,7 @@ export default function ShippingOptions() {
                                                                 <Text
                                                                     key={promo.promotionId}
                                                                     fontSize="sm"
-                                                                    color="green.500"
+                                                                    color="green.600"
                                                                 >
                                                                     {promo.calloutMsg}
                                                                 </Text>
@@ -199,7 +208,7 @@ export default function ShippingOptions() {
                                 <Text
                                     fontWeight="normal"
                                     textDecoration="line-through"
-                                    color="gray.500"
+                                    color="gray.600"
                                     marginLeft={1}
                                 >
                                     <FormattedNumber
@@ -219,7 +228,7 @@ export default function ShippingOptions() {
                             <Text
                                 key={adjustment.priceAdjustmentId}
                                 fontSize="sm"
-                                color="green.500"
+                                color="green.600"
                             >
                                 {adjustment.itemText}
                             </Text>

@@ -7,7 +7,13 @@
 import React, {useContext, createContext} from 'react'
 import PropTypes from 'prop-types'
 import {FormattedMessage} from 'react-intl'
-import {Box, Button, Flex, Heading, Stack} from '@chakra-ui/react'
+import {
+    Box,
+    Button,
+    Flex,
+    Heading,
+    Stack
+} from '@salesforce/retail-react-app/app/components/shared/ui'
 import LoadingSpinner from '@salesforce/retail-react-app/app/components/loading-spinner'
 
 const ToggleCardContext = createContext()
@@ -43,7 +49,8 @@ export const ToggleCard = ({
                         <Heading
                             fontSize="lg"
                             lineHeight="30px"
-                            color={disabled && !editing && 'gray.400'}
+                            color={disabled && !editing && 'gray.600'}
+                            tabIndex="0"
                         >
                             {title}
                         </Heading>

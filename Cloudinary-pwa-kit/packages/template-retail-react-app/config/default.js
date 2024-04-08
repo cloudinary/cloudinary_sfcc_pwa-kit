@@ -12,7 +12,8 @@ module.exports = {
         url: {
             site: 'path',
             locale: 'path',
-            showDefaults: true
+            showDefaults: true,
+            interpretPlusSignAsSpace: false
         },
         defaultSite: 'RefArchGlobal',
         siteAliases: {
@@ -49,7 +50,7 @@ module.exports = {
         '**/*.json'
     ],
     ssrParameters: {
-        ssrFunctionNodeVersion: '16.x',
+        ssrFunctionNodeVersion: '18.x',
         proxyConfigs: [
             {
                 host: 'kv7kzm78.api.commercecloud.salesforce.com',

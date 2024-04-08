@@ -2211,6 +2211,14 @@ export const mockedCustomerProductListsDetails = {
                 {
                     calloutMsg: '$50offOrderCountAbove5',
                     promotionId: '$50offOrderCountAbove5'
+                },
+                {
+                    promotionalPrice: 189.0,
+                    promotionId: '10$offIpod'
+                },
+                {
+                    promotionalPrice: 194.0,
+                    promotionId: '5$offIpod'
                 }
             ],
             shortDescription:
@@ -5629,4 +5637,11 @@ export const mockCartVariant = {
     c_refinementColor: 'black',
     c_size: '9MD',
     c_width: 'Z'
+}
+
+export const mockPasswordUpdateFalure = {
+    title: 'Update Password',
+    type: 'https://api.commercecloud.salesforce.com/documentation/error/v1/errors/update-password',
+    detail: 'The update password request is invalid. Customer\u0027s current password is not valid',
+    errorMessage: 'Customer\u0027s current password is not valid'
 }

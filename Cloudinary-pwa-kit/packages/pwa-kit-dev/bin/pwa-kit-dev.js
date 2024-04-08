@@ -13,7 +13,6 @@ const WebSocket = require('ws')
 const program = require('commander')
 const validator = require('validator')
 const {execSync: _execSync} = require('child_process')
-const projectPkg = require(process.cwd() + '/package.json')
 const {getConfig} = require('@salesforce/pwa-kit-runtime/utils/ssr-config')
 
 // Scripts in ./bin have never gone through babel, so we
@@ -58,6 +57,19 @@ const getProjectName = async () => {
         throw new Error(`Missing "name" field in "package.json"`)
     }
     return projectPkg.name
+}
+
+const getAppEntrypoint = async () => {
+    const defaultPath = p.join(process.cwd(), 'app', 'ssr.js')
+    if (await fse.pathExists(defaultPath)) return defaultPath
+
+    const projectPkg = await scriptUtils.getProjectPkg()
+    const {overridesDir} = projectPkg?.ccExtensibility ?? {}
+    if (!overridesDir || typeof overridesDir !== 'string') return null
+
+    const overridePath = p.join(process.cwd(), p.sep + overridesDir, 'app', 'ssr.js')
+    if (await fse.pathExists(overridePath)) return overridePath
+    return null
 }
 
 const main = async () => {
@@ -114,6 +126,9 @@ const main = async () => {
      * All Managed Runtime commands take common opts like --cloud-origin
      * and --credentialsFile. These are set to be split out from the SDK
      * commands here in the near future.
+     *
+     * @param {string} name name of the command
+     * @returns {import('commander').Command}
      */
     const managedRuntimeCommand = (name) => {
         return program
@@ -131,68 +146,83 @@ const main = async () => {
                     // Must default to undefined in order to trigger automatic-lookup
                     // of a credentials file, based on --cloud-origin.
                     .default(undefined)
-                    .env('PWA_KIT_CREDENTIALS_FILE')
+                    .env('MRT_CREDENTIALS_FILE')
+            )
+            .addOption(
+                new program.Option(
+                    '-u, --user <email>',
+                    'the e-mail address you used to register with Managed Runtime'
+                )
+                    .argParser((val) => {
+                        if (!validator.isEmail(val)) {
+                            throw new program.InvalidArgumentError(`"${val}" is not a valid email`)
+                        } else {
+                            return val
+                        }
+                    })
+                    .env('MRT_USER')
+            )
+            .addOption(
+                new program.Option(
+                    '-k, --key <api-key>',
+                    `find your API key at https://runtime.commercecloud.com/account/settings`
+                )
+                    .argParser((val) => {
+                        if (typeof val !== 'string' || val === '') {
+                            throw new program.InvalidArgumentError(`"api-key" cannot be empty`)
+                        } else {
+                            return val
+                        }
+                    })
+                    .env('MRT_API_KEY')
             )
             .hook('preAction', (thisCommand, actionCommand) => {
+                let {cloudOrigin, credentialsFile, user, key} = actionCommand.opts()
+
+                // support older PWA_KIT_CREDENTIALS_FILE env var for credentialsFile
+                if (!credentialsFile && process.env.PWA_KIT_CREDENTIALS_FILE) {
+                    console.warn(
+                        'Using PWA_KIT_CREDENTIALS_FILE is deprecated. Please use MRT_CREDENTIALS_FILE instead.'
+                    )
+                    credentialsFile = process.env.PWA_KIT_CREDENTIALS_FILE
+                }
+
                 // The final credentialsFile path depends on both cloudOrigin and credentialsFile opts.
                 // Pre-process before passing to the command.
-                const {cloudOrigin, credentialsFile} = actionCommand.opts()
                 actionCommand.setOptionValue(
                     'credentialsFile',
                     scriptUtils.getCredentialsFile(cloudOrigin, credentialsFile)
                 )
+
+                // user and key should always be used together
+                if ((user && !key) || (!user && key)) {
+                    throw new program.InvalidArgumentError(
+                        'You must provide a --user and --key option together, or neither'
+                    )
+                }
             })
     }
 
     managedRuntimeCommand('save-credentials')
         .description(`save API credentials for Managed Runtime`)
-        .requiredOption(
-            '-u, --user <email>',
-            'the e-mail address you used to register with Managed Runtime',
-            (val) => {
-                if (!validator.isEmail(val)) {
-                    throw new program.InvalidArgumentError(`"${val}" is not a valid email`)
-                } else {
-                    return val
-                }
+        .hook('preAction', (thisCommand, actionCommand) => {
+            const {user, key} = actionCommand.opts()
+            // user and key are optional for other MRT commands but required here as we need something to save
+            if (!user || !key) {
+                throw new program.InvalidArgumentError(
+                    'You must provide a --user and --key option to save to the credentials file'
+                )
             }
-        )
-        .requiredOption(
-            '-k, --key <api-key>',
-            `find your API key at https://runtime.commercecloud.com/account/settings`,
-            (val) => {
-                if (typeof val !== 'string' || val === '') {
-                    throw new program.InvalidArgumentError(`"api-key" cannot be empty`)
-                } else {
-                    return val
-                }
-            }
-        )
+        })
         .action(async ({user, key, credentialsFile}) => {
             try {
-                fse.writeJson(credentialsFile, {username: user, api_key: key}, {spaces: 4})
+                await fse.writeJson(credentialsFile, {username: user, api_key: key}, {spaces: 4})
                 success(`Saved Managed Runtime credentials to "${chalk.cyan(credentialsFile)}".`)
             } catch (e) {
                 error('Failed to save credentials.')
                 throw e
             }
         })
-
-    const appSSRpath = p.join(process.cwd(), 'app', 'ssr.js')
-    const appSSRjs = fse.pathExistsSync(appSSRpath)
-    const overrideSSRpath = p.join(
-        process.cwd(),
-        typeof projectPkg?.ccExtensibility?.overridesDir === 'string' &&
-            !projectPkg?.ccExtensibility?.overridesDir?.startsWith(p.sep)
-            ? p.sep + projectPkg?.ccExtensibility?.overridesDir
-            : projectPkg?.ccExtensibility?.overridesDir
-            ? projectPkg?.ccExtensibility?.overridesDir
-            : '',
-        'app',
-        'ssr.js'
-    )
-    const overrideSSRjs = fse.pathExistsSync(overrideSSRpath)
-    const resolvedSSRPath = appSSRjs ? appSSRpath : overrideSSRjs ? overrideSSRpath : null
 
     program
         .command('start')
@@ -201,8 +231,30 @@ const main = async () => {
             new program.Option('--inspect', 'enable debugging with --inspect on the node process')
         )
         .addOption(new program.Option('--noHMR', 'disable the client-side hot module replacement'))
-        .action(async ({inspect, noHMR}) => {
-            execSync(`node${inspect ? ' --inspect' : ''} ${resolvedSSRPath}`, {
+        .addOption(
+            new program.Option(
+                '--babelArgs <babel-args>',
+                'args to pass through to babel-node'
+            ).default('--extensions ".js,.jsx,.ts,.tsx"')
+        )
+        .action(async ({inspect, noHMR, babelArgs}) => {
+            // We use @babel/node instead of node because we want to support ES6 import syntax
+            const babelNode = p.join(
+                require.resolve('webpack'),
+                '..',
+                '..',
+                '..',
+                '.bin',
+                'babel-node'
+            )
+
+            const entrypoint = await getAppEntrypoint()
+            if (!entrypoint) {
+                error('Could not determine app entrypoint.')
+                process.exit(1)
+            }
+
+            execSync(`${babelNode} ${inspect ? '--inspect' : ''} ${babelArgs} ${entrypoint}`, {
                 env: {
                     ...process.env,
                     ...(noHMR ? {HMR: 'false'} : {})
@@ -290,6 +342,9 @@ const main = async () => {
                 'immediately deploy the bundle to this target once it is pushed'
             )
         )
+        .addOption(
+            new program.Option('-w, --wait', 'wait for the deployment to complete before exiting')
+        )
         .action(
             async ({
                 buildDirectory,
@@ -297,7 +352,10 @@ const main = async () => {
                 projectSlug,
                 target,
                 cloudOrigin,
-                credentialsFile
+                credentialsFile,
+                wait,
+                user,
+                key
             }) => {
                 // Set the deployment target env var, this is required to ensure we
                 // get the correct configuration object. Do not assign the variable it if
@@ -305,9 +363,22 @@ const main = async () => {
                 // string value.
                 if (target) {
                     process.env.DEPLOY_TARGET = target
+                } else if (wait) {
+                    throw new Error(
+                        'You must provide a target to deploy to when using --wait to wait for deployment to finish.'
+                    )
                 }
 
-                const credentials = await scriptUtils.readCredentials(credentialsFile)
+                /** @type {Credentials} */
+                let credentials
+                if (user && key) {
+                    credentials = {
+                        username: user,
+                        api_key: key
+                    }
+                } else {
+                    credentials = await scriptUtils.readCredentials(credentialsFile)
+                }
 
                 if (!fse.pathExistsSync(buildDirectory)) {
                     throw new Error(`Supplied "buildDirectory" does not exist!`)
@@ -336,7 +407,12 @@ const main = async () => {
                 const data = await client.push(bundle, projectSlug, target)
                 const warnings = data.warnings || []
                 warnings.forEach(warn)
-                success('Bundle Uploaded')
+                if (wait) {
+                    success('Bundle Uploaded - waiting for deployment to complete')
+                    await client.waitForDeploy(projectSlug, target)
+                } else {
+                    success('Bundle Uploaded')
+                }
             }
         )
 
@@ -380,12 +456,21 @@ const main = async () => {
             )
         )
         .requiredOption('-e, --environment <environmentSlug>', 'the environment slug')
-        .action(async ({project, environment, cloudOrigin, credentialsFile}) => {
+        .action(async ({project, environment, cloudOrigin, credentialsFile, user, key}) => {
             if (!project) {
                 project = await getProjectName()
             }
 
-            const credentials = await scriptUtils.readCredentials(credentialsFile)
+            /** @type {Credentials} */
+            let credentials
+            if (user && key) {
+                credentials = {
+                    username: user,
+                    api_key: key
+                }
+            } else {
+                credentials = await scriptUtils.readCredentials(credentialsFile)
+            }
 
             const client = new scriptUtils.CloudAPIClient({
                 credentials,

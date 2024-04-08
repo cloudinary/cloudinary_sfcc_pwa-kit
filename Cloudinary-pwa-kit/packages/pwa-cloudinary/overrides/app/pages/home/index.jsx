@@ -92,10 +92,6 @@ const Home = () => {
         if (slotRes.ok) {
             setSlotResult(await slotRes.text())
         }
-        if (process.env.NODE_ENV !== 'production') {
-            console.log(contentResult)
-            console.log(slotResult)
-        }
     }
     // CLD Custom Code Ends
 

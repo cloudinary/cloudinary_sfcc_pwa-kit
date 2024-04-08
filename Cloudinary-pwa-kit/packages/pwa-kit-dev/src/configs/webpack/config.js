@@ -33,6 +33,7 @@ const production = 'production'
 const development = 'development'
 const analyzeBundle = process.env.MOBIFY_ANALYZE === 'true'
 const mode = process.env.NODE_ENV === production ? production : development
+const INSPECT = process.execArgv.some((arg) => /^--inspect(?:-brk)?(?:$|=)/.test(arg))
 const DEBUG = mode !== production && process.env.DEBUG === 'true'
 const CI = process.env.CI
 const disableHMR = process.env.HMR === 'false'
@@ -257,6 +258,13 @@ const baseConfig = (target) => {
                             use: {
                                 loader: findDepInStack('html-loader')
                             }
+                        },
+                        {
+                            test: /\.js$/,
+                            enforce: 'pre',
+                            use: {
+                                loader: findDepInStack('source-map-loader')
+                            }
                         }
                     ].filter(Boolean)
                 }
@@ -319,6 +327,18 @@ const withChunking = (config) => {
         }
     }
 }
+
+const staticFolderCopyPlugin = new CopyPlugin({
+    patterns: [
+        {
+            from: path
+                .resolve(`${EXT_OVERRIDES_DIR ? EXT_OVERRIDES_DIR_NO_SLASH + '/' : ''}app/static`)
+                .replace(/\\/g, '/'),
+            to: `static/`,
+            noErrorOnMissing: true
+        }
+    ]
+})
 
 const ruleForBabelLoader = (babelPlugins) => {
     return {
@@ -391,6 +411,7 @@ const enableReactRefresh = (config) => {
         }
     }
 }
+
 const client =
     entryPointExists(['app', 'main']) &&
     baseConfig('web')
@@ -454,7 +475,7 @@ const renderer =
                 name: SERVER,
                 entry: '@salesforce/pwa-kit-react-sdk/ssr/server/react-rendering.js',
                 // use eval-source-map for server-side debugging
-                devtool: mode === development ? 'eval-source-map' : false,
+                devtool: mode === development && INSPECT ? 'eval-source-map' : false,
                 output: {
                     path: buildDir,
 
@@ -466,26 +487,7 @@ const renderer =
                 },
                 plugins: [
                     ...config.plugins,
-
-                    // This must only appear on one config – this one is the only mandatory one.
-                    new CopyPlugin({
-                        patterns: [
-                            {
-                                from: path
-                                    .resolve(
-                                        `${
-                                            EXT_OVERRIDES_DIR
-                                                ? EXT_OVERRIDES_DIR_NO_SLASH + '/'
-                                                : ''
-                                        }app/static`
-                                    )
-                                    .replace(/\\/g, '/'),
-                                to: `static/`,
-                                noErrorOnMissing: true
-                            }
-                        ]
-                    }),
-
+                    staticFolderCopyPlugin,
                     // Keep this on the slowest-to-build item - the server-side bundle.
                     new WebpackNotifierPlugin({
                         title: `PWA Kit Project: ${pkg.name}`,
@@ -506,6 +508,9 @@ const ssr = (() => {
             .extend((config) => {
                 return {
                     ...config,
+                    ...(process.env.PWA_KIT_SSR_SOURCE_MAP === 'true'
+                        ? {devtool: 'source-map'}
+                        : {}),
                     // Must *not* be named "server". See - https://www.npmjs.com/package/webpack-hot-server-middleware#usage
                     name: SSR,
                     entry: `.${EXT_OVERRIDES_DIR}/app/ssr.js`,
@@ -516,6 +521,7 @@ const ssr = (() => {
                     },
                     plugins: [
                         ...config.plugins,
+                        staticFolderCopyPlugin,
                         analyzeBundle && getBundleAnalyzerPlugin(SSR)
                     ].filter(Boolean)
                 }
@@ -541,7 +547,7 @@ const requestProcessor =
                     libraryTarget: 'commonjs2'
                 },
                 // use eval-source-map for server-side debugging
-                devtool: mode === development ? 'eval-source-map' : false,
+                devtool: mode === development && INSPECT ? 'eval-source-map' : false,
                 plugins: [
                     ...config.plugins,
                     analyzeBundle && getBundleAnalyzerPlugin(REQUEST_PROCESSOR)

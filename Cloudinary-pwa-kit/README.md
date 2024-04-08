@@ -1,3 +1,13 @@
+:loudspeaker: Hey there, Salesforce Commerce Cloud community!
+
+We’re excited to hear your thoughts on your developer experience with PWA Kit and the Composable Storefront generally! Your feedback is incredibly valuable in helping us guide our roadmap and improve our offering.
+
+:clipboard: Take our quick survey here: [Survey](https://forms.gle/bUZNxQ3QKUcrjhV18) 
+
+Feel free to share this survey link with your colleagues, partners, or anyone who has experience with PWA Kit. Your input will help us shape the future of our development tools.
+
+Thank you for being a part of our community and for your continuous support! :raised_hands:
+
 <div align="center">
 
 <h1>The Progressive Web App (PWA) Kit</h1>
@@ -28,8 +38,8 @@ The PWA Kit is a storefront technology for headless commerce using Salesforce Co
 
 ### Requirements
 
--   Node 16 or later
--   npm 8 or later
+-   Node 18 or later
+-   npm 9 or later
 
 ### Create Your First Project
 
@@ -55,7 +65,7 @@ npm run push -- -m "Message to help you recognize this bundle"
 
 ## 🌍 Localization
 
-See the [Localization README.md](./packages/template-retail-react-app/app/translations/README.md) for important setup instructions for localization.
+See the [Localization README.md](./packages/template-retail-react-app/translations/README.md) for important setup instructions for localization.
 
 ## ⚠️ License Information
 
@@ -64,6 +74,14 @@ The PWA Kit is licensed under a BSD 3-Clause license. See the [license](./LICENS
 ## ➕ Contribute
 
 Your contributions are welcome! Refer to the [CONTRIBUTING](./CONTRIBUTING.md) guide to get started. If you like `pwa-kit`, consider adding a ⭐ on the [GitHub Repo](https://github.com/SalesforceCommerceCloud/pwa-kit/). It helps other people discover PWA Kit!
+
+## 🛠️ Nightly Builds
+
+⚠️ PWA Kit releases nightly builds on a nightly cadence for better visibility about upcoming features and a chance for implementers to test code integrations via a "preview" release. These builds are untested and unsupported. Use at your own risk!
+Nightly builds carry none of our guarantees associated with well-tested software. **Do not use these builds in production**.
+Some feature included in the nightly builds may not be included in final PWA Kit releases.
+These unreleased builds may not even load, may have undocumented features, known defects, and any number of other issues.
+They are intended for use by developers and others wishing to get early access to planned PWA Kit features.
 
 ## 📖 Documentation
 

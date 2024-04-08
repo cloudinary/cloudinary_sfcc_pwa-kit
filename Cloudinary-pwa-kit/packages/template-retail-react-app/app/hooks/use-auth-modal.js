@@ -19,7 +19,7 @@ import {
     Text,
     useDisclosure,
     useToast
-} from '@chakra-ui/react'
+} from '@salesforce/retail-react-app/app/components/shared/ui'
 import {
     AuthHelpers,
     useAuthHelper,
@@ -278,7 +278,12 @@ export const AuthModal = ({
         >
             <ModalOverlay />
             <ModalContent>
-                <ModalCloseButton />
+                <ModalCloseButton
+                    aria-label={formatMessage({
+                        id: 'auth_modal.button.close.assistive_msg',
+                        defaultMessage: 'Close login form'
+                    })}
+                />
                 <ModalBody pb={8} bg="white" paddingBottom={14} marginTop={14}>
                     {!form.formState.isSubmitSuccessful && currentView === LOGIN_VIEW && (
                         <LoginForm

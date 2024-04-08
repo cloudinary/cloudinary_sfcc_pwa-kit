@@ -1,5 +1,3 @@
-'use strict'
-
 import React, { useEffect } from 'react'
 import PropTypes from 'prop-types'
 
@@ -9,7 +7,7 @@ const RenderCloudinaryGalleryWidget = ({ cloudinaryImageGallery = {} }) => {
         const cloudinaryObj = cloudinaryImageGallery
         const gallery = document.querySelector('#cld-gallery');
         while (gallery.firstChild) {
-            gallery.removeChild(gallery.firstChild);
+            gallery.removeChild(gallery.firstChild)
         }
         if (cloudinaryObj && cloudinaryObj.galleryEnabled) {
             const galleryOptions = cloudinaryObj.cloudinaryImage.galleryWidget.options

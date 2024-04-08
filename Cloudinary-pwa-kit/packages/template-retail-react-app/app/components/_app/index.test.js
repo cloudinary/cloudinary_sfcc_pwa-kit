@@ -4,9 +4,11 @@
  * SPDX-License-Identifier: BSD-3-Clause
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
+/* eslint-disable no-import-assign */
 import React from 'react'
-import {screen} from '@testing-library/react'
+import {screen, waitFor} from '@testing-library/react'
 import {Helmet} from 'react-helmet'
+import {rest} from 'msw'
 
 import App from '@salesforce/retail-react-app/app/components/_app/index.jsx'
 import {renderWithProviders} from '@salesforce/retail-react-app/app/utils/test-utils'
@@ -14,16 +16,22 @@ import {DEFAULT_LOCALE} from '@salesforce/retail-react-app/app/utils/test-utils'
 import useMultiSite from '@salesforce/retail-react-app/app/hooks/use-multi-site'
 import messages from '@salesforce/retail-react-app/app/static/translations/compiled/en-GB.json'
 import mockConfig from '@salesforce/retail-react-app/config/mocks/default'
+import * as constants from '@salesforce/retail-react-app/app/constants'
+
 jest.mock('../../hooks/use-multi-site', () => jest.fn())
+
 let windowSpy
+let originalValue
 beforeAll(() => {
     jest.spyOn(console, 'log').mockImplementation(jest.fn())
     jest.spyOn(console, 'groupCollapsed').mockImplementation(jest.fn())
+    originalValue = constants.ACTIVE_DATA_ENABLED
 })
 
 afterAll(() => {
     console.log.mockRestore()
     console.groupCollapsed.mockRestore()
+    constants.ACTIVE_DATA_ENABLED = originalValue
 })
 beforeEach(() => {
     windowSpy = jest.spyOn(window, 'window', 'get')
@@ -60,8 +68,37 @@ describe('App', () => {
                 <p>Any children here</p>
             </App>
         )
-        screen.debug()
         expect(screen.getByRole('main')).toBeInTheDocument()
+        expect(screen.getByText('Any children here')).toBeInTheDocument()
+    })
+
+    test('Active Data component is not rendered', async () => {
+        constants.ACTIVE_DATA_ENABLED = false
+        useMultiSite.mockImplementation(() => resultUseMultiSite)
+        renderWithProviders(
+            <App targetLocale={DEFAULT_LOCALE} defaultLocale={DEFAULT_LOCALE} messages={messages}>
+                <p>Any children here</p>
+            </App>
+        )
+        await waitFor(() =>
+            expect(document.getElementById('headActiveData')).not.toBeInTheDocument()
+        )
+        await waitFor(() => expect(document.getElementById('dwanalytics')).not.toBeInTheDocument())
+        await waitFor(() => expect(document.getElementById('dwac')).not.toBeInTheDocument())
+        expect(screen.getByText('Any children here')).toBeInTheDocument()
+    })
+
+    test('Active Data component is rendered appropriately', async () => {
+        constants.ACTIVE_DATA_ENABLED = true
+        useMultiSite.mockImplementation(() => resultUseMultiSite)
+        renderWithProviders(
+            <App targetLocale={DEFAULT_LOCALE} defaultLocale={DEFAULT_LOCALE} messages={messages}>
+                <p>Any children here</p>
+            </App>
+        )
+        await waitFor(() => expect(document.getElementById('headActiveData')).toBeInTheDocument())
+        await waitFor(() => expect(document.getElementById('dwanalytics')).toBeInTheDocument())
+        await waitFor(() => expect(document.getElementById('dwac')).toBeInTheDocument())
         expect(screen.getByText('Any children here')).toBeInTheDocument()
     })
 
@@ -81,5 +118,64 @@ describe('App', () => {
 
         expect(hreflangLinks.some((link) => hasGeneralLocale(link))).toBe(true)
         expect(hreflangLinks.some((link) => link.hrefLang === 'x-default')).toBe(true)
+    })
+
+    test('App component updates the basket with correct currency and customer email', async () => {
+        const customerEmail = 'email@test.com'
+
+        // Test basket. _app will be manipulating this basket's currency and customerInfo.email for this test
+        const basket = {
+            basketId: 'basket_id',
+            currency: 'CAD',
+            customerInfo: {
+                customerId: 'customer_id',
+                email: ''
+            }
+        }
+
+        jest.mock('../../hooks/use-current-customer', () => {
+            return {
+                useCurrentCustomer: jest.fn().mockImplementation(() => {
+                    return {data: basket, derivedData: {hasBasket: true, totalItems: 0}}
+                })
+            }
+        })
+
+        jest.mock('../../hooks/use-current-basket', () => {
+            return {
+                useCurrentBasket: jest.fn().mockImplementation(() => {
+                    return {
+                        data: basket,
+                        derivedData: {
+                            hasBasket: true,
+                            totalItems: 0
+                        }
+                    }
+                })
+            }
+        })
+
+        global.server.use(
+            // mock updating basket currency
+            rest.patch('*/baskets/:basketId', (req, res, ctx) => {
+                basket.currency = 'GBP'
+                return res(ctx.json(basket))
+            }),
+            // mock adding guest email to basket
+            rest.put('*/baskets/:basketId/customer', (req, res, ctx) => {
+                basket.customerInfo.email = customerEmail
+                return res(ctx.json(basket))
+            })
+        )
+
+        useMultiSite.mockImplementation(() => resultUseMultiSite)
+        renderWithProviders(
+            <App targetLocale={DEFAULT_LOCALE} defaultLocale={DEFAULT_LOCALE} messages={messages} />
+        )
+
+        await waitFor(() => {
+            expect(basket.currency).toBe('GBP')
+            expect(basket.customerInfo.email).toBe(customerEmail)
+        })
     })
 })

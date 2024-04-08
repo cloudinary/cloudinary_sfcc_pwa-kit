@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, salesforce.com, inc.
+ * Copyright (c) 2023, Salesforce, Inc.
  * All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
@@ -15,7 +15,7 @@ import {
     AccordionButton,
     AccordionPanel,
     AccordionIcon
-} from '@chakra-ui/react'
+} from '@salesforce/retail-react-app/app/components/shared/ui'
 import PropTypes from 'prop-types'
 import ColorRefinements from '@salesforce/retail-react-app/app/pages/product-list/partials/color-refinements'
 import SizeRefinements from '@salesforce/retail-react-app/app/pages/product-list/partials/size-refinements'
@@ -25,7 +25,8 @@ import LinkRefinements from '@salesforce/retail-react-app/app/pages/product-list
 import {isServer} from '@salesforce/retail-react-app/app/utils/utils'
 import {FILTER_ACCORDION_SATE} from '@salesforce/retail-react-app/app/constants'
 
-const componentMap = {
+/** Map of refinement attribute IDs to the components used to display values as filter options. */
+export const componentMap = {
     cgid: LinkRefinements,
     c_refinementColor: ColorRefinements,
     c_size: SizeRefinements,
@@ -38,9 +39,10 @@ const Refinements = ({filters, toggleFilter, selectedFilters, isLoading}) => {
 
     // Use saved state for accordions
     if (!isServer) {
+        // TODO: Change this to `useLocalStorage` hook when localStorage detection is more robust
+        const filterAccordionState = window.localStorage.getItem(FILTER_ACCORDION_SATE)
         const savedExpandedAccordionIndexes =
-            window.localStorage.getItem(FILTER_ACCORDION_SATE) &&
-            JSON.parse(window.localStorage.getItem(FILTER_ACCORDION_SATE))
+            filterAccordionState && JSON.parse(filterAccordionState)
 
         if (savedExpandedAccordionIndexes) {
             filtersIndexes = filters
@@ -58,6 +60,8 @@ const Refinements = ({filters, toggleFilter, selectedFilters, isLoading}) => {
         const filterState = filters
             ?.filter((filter, index) => expandedIndex.includes(index))
             .map((filter) => filter.attributeId)
+
+        // TODO: Update when localStorage detection is more robust? useLocalStorage is only a getter
         window.localStorage.setItem(FILTER_ACCORDION_SATE, JSON.stringify(filterState))
     }
 
