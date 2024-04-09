@@ -1,6 +1,6 @@
 {
-  "name": "pwa-cloudinary",
-  "version": "0.0.1",
+  "name": "cloudinary",
+  "version": "3.0.0",
   "license": "See license in LICENSE",
   "engines": {
     "node": "^18.0.0 || ^20.0.0",
