@@ -5,7 +5,7 @@ const RenderCloudinaryGalleryWidget = ({ cloudinaryImageGallery = {} }) => {
 
     useEffect(() => {
         const cloudinaryObj = cloudinaryImageGallery
-        const gallery = document.querySelector('#cld-gallery');
+        const gallery = document.querySelector('#cld-gallery')
         while (gallery.firstChild) {
             gallery.removeChild(gallery.firstChild)
         }
