@@ -25,13 +25,13 @@ const CloudinaryImageGallery = ({size, cloudinaryImageGallery = {}}) => {
     useEffect(() => {
         if (
             document.querySelector(
-                `script[src="${`https://product-gallery.cloudinary.com/${cloudinary.versions.CLDGalleryVersion}/all.js`}"]`
+                `script[src="${`https://product-gallery.cloudinary.com//all.js`}"]`
             ) !== null
         ) {
             setProductLoaded(true)
         } else if (cloudinaryImageGallery?.galleryEnabled) {
             const script = document.createElement('script')
-            script.src = `https://product-gallery.cloudinary.com/${cloudinary.versions.CLDGalleryVersion}/all.js`
+            script.src = `https://product-gallery.cloudinary.com/all.js`
             script.async = false
             document.head.appendChild(script)
             script.onload = () => {

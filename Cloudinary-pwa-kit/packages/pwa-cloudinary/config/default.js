@@ -90,8 +90,7 @@ module.exports = {
         },
         versions: {
             CLDVideoPlayeVersion: '1.10.1',
-            CLDCoreShrinkwrapJSURLVersion: '2.13.0',
-            CLDGalleryVersion: '1.0.50'
+            CLDCoreShrinkwrapJSURLVersion: '2.13.0'
         }
     }
 }
