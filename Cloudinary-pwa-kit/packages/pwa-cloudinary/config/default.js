@@ -87,10 +87,9 @@ module.exports = {
             siteId: 'SITE_ID',
             host: 'HOST_NAME', // e.g zzrf-001.dx.commercecloud.salesforce.com
             contentAssetId: 'home-main'
-          },
+        },
         versions: {
-            CLDVideoPlayerJsVersion: '1.10.1',
-            CLDVideoPlayerCssVersion: '1.10.1',
+            CLDVideoPlayeVersion: '1.10.1',
             CLDCoreShrinkwrapJSURLVersion: '2.13.0',
             CLDGalleryVersion: '1.0.50'
         }

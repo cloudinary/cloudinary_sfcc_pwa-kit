@@ -62,10 +62,10 @@ const Footer = ({ ...otherProps }) => {
                 <script src={`https://unpkg.com/cloudinary-core@${cloudinary.versions.CLDCoreShrinkwrapJSURLVersion}/cloudinary-core-shrinkwrap.min.js`} />
             </Helmet>
             <Helmet>
-                <script src={`https://unpkg.com/cloudinary-video-player@${cloudinary.versions.cldVideoPlayerJsVersion}/dist/cld-video-player.min.js`} />
+                <script src={`https://unpkg.com/cloudinary-video-player@${cloudinary.versions.cldVideoPlayerVersion}/dist/cld-video-player.min.js`} />
             </Helmet>
             <Helmet>
-                <link rel="stylesheet" href={`https://unpkg.com/cloudinary-video-player@${cloudinary.versions.cldVideoPlayerCssVersion}/dist/cld-video-player.min.css`} />
+                <link rel="stylesheet" href={`https://unpkg.com/cloudinary-video-player@${cloudinary.versions.cldVideoPlayerVersion}/dist/cld-video-player.min.css`} />
             </Helmet>
             <Helmet>
                 <script src={`https://product-gallery.cloudinary.com/all.js`} />
