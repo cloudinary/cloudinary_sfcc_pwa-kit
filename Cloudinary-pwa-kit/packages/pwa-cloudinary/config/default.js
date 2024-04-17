@@ -89,9 +89,10 @@ module.exports = {
             contentAssetId: 'home-main'
           },
         versions: {
-            cldVideoPlayerJsVersion: '1.10.1',
-            cldVideoPlayerCssVersion: '1.10.1',
-            CLDCoreShrinkwrapJSURLVersion: '2.13.0'
+            CLDVideoPlayerJsVersion: '1.10.1',
+            CLDVideoPlayerCssVersion: '1.10.1',
+            CLDCoreShrinkwrapJSURLVersion: '2.13.0',
+            CLDGalleryVersion: '1.0.50'
         }
     }
 }
