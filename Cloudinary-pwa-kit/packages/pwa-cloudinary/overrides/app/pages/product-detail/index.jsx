@@ -252,11 +252,6 @@ const ProductDetail = () => {
             <Helmet>
                 <title>{product?.pageTitle}</title>
                 <meta name="description" content={product?.pageDescription} />
-                {/** Cloudinary Custom Code Starts */ }
-                {product?.c_cloudinary?.galleryEnabled && (
-                    <script src='https://product-gallery.cloudinary.com/all.js' />
-                )}
-                {/** Cloudinary Custom Code Ends */ }
             </Helmet>
 
             <Stack spacing={16}>
