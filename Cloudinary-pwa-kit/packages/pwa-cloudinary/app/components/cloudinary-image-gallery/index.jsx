@@ -10,7 +10,6 @@ import {AspectRatio, Box, Img, Flex, ListItem, List, useMultiStyleConfig} from '
 import DynamicImage from '@salesforce/retail-react-app/app/components/dynamic-image'
 import RenderCloudinaryGalleryWidget from '../../components/cloudinary-widgets'
 import RenderCloudinaryVideoPlayer from '../../components/cloudinary-product-video'
-import {cloudinary} from '../../../config/default'
 
 const EnterKeyNumber = 13
 
@@ -19,24 +18,23 @@ const EnterKeyNumber = 13
  */
 const CloudinaryImageGallery = ({size, cloudinaryImageGallery = {}}) => {
     const [selectedIndex, setSelectedIndex] = useState(0)
-    const [productLoaded, setProductLoaded] = useState(false)
+    const [isScriptLoaded, setIsScriptLoaded] = useState(false)
     let imageUrls
 
     useEffect(() => {
         if (
             document.querySelector(
-                `script[src="${`https://product-gallery.cloudinary.com//all.js`}"]`
+                `script[src="${`https://product-gallery.cloudinary.com/all.js`}"]`
             ) !== null
         ) {
-            setProductLoaded(true)
+            setIsScriptLoaded(true)
         } else if (cloudinaryImageGallery?.galleryEnabled) {
             const script = document.createElement('script')
             script.src = `https://product-gallery.cloudinary.com/all.js`
-            script.async = false
-            document.head.appendChild(script)
             script.onload = () => {
-                setProductLoaded(true)
+                setIsScriptLoaded(true)
             }
+            document.head.appendChild(script)
         }
     }, [])
 
@@ -47,7 +45,7 @@ const CloudinaryImageGallery = ({size, cloudinaryImageGallery = {}}) => {
     const imageUrl = imageUrls ? imageUrls[selectedIndex] : null
     return (
         <Flex direction="column">
-            {cloudinaryImageGallery.galleryEnabled && productLoaded ? (
+            {cloudinaryImageGallery.galleryEnabled && isScriptLoaded ? (
                 <>
                     <RenderCloudinaryGalleryWidget
                         cloudinaryImageGallery={cloudinaryImageGallery}
