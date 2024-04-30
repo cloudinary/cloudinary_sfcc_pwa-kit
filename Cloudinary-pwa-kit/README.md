@@ -1,178 +1,106 @@
-# The Retail React App
+:loudspeaker: Hey there, Salesforce Commerce Cloud community!
 
-The Retail React App is an isomorphic JavaScript storefront and [Progressive Web App](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps) built using [React](https://reactjs.org/) and [Express](https://expressjs.com/). It uses a modern headless architecture that enables developers to decouple front-end code from back-end systems. It leverages popular open-source libraries in the React ecosystem, such as [Chakra UI](https://chakra-ui.com/) components, [Emotion](https://emotion.sh/docs/introduction) (CSS-in-JS), [Webpack](https://webpack.js.org/), and many more.
+We’re excited to hear your thoughts on your developer experience with PWA Kit and the Composable Storefront generally! Your feedback is incredibly valuable in helping us guide our roadmap and improve our offering.
 
-Developers don’t have to worry about the underlying infrastructure, whether they’re developing their app locally, deploying it to a [Managed Runtime](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/mrt-overview.html) environment, or testing the app live.
+:clipboard: Take our quick survey here: [Survey](https://forms.gle/bUZNxQ3QKUcrjhV18) 
 
-## Requirements
+Feel free to share this survey link with your colleagues, partners, or anyone who has experience with PWA Kit. Your input will help us shape the future of our development tools.
 
+Thank you for being a part of our community and for your continuous support! :raised_hands:
+
+<div align="center">
+
+<h1>The Progressive Web App (PWA) Kit</h1>
+
+[![npm](https://img.shields.io/npm/v/@salesforce/pwa-kit-react-sdk.svg)](https://www.npmjs.com/package/@salesforce/pwa-kit-react-sdk)
+[![License](https://img.shields.io/github/license/SalesforceCommerceCloud/pwa-kit.svg)](https://github.com/SalesforceCommerceCloud/pwa-kit/blob/master/LICENSE)
+[![Checks](https://img.shields.io/github/checks-status/SalesforceCommerceCloud/pwa-kit/develop.svg)](https://github.com/SalesforceCommerceCloud/pwa-kit)
+[![npm](https://img.shields.io/npm/dm/@salesforce/pwa-kit-react-sdk.svg)](https://www.npmjs.com/package/@salesforce/pwa-kit-react-sdk)
+
+</div>
+
+<div align="center">
+
+📖 [Read Docs](https://sfdc.co/pwa-kit) |
+🏖️ [View Demo](https://pwa-kit.mobify-storefront.com/) |
+🚀 [Deploy](https://runtime.commercecloud.com/) |
+➕ [Contribute](https://github.com/SalesforceCommerceCloud/pwa-kit/blob/develop/CONTRIBUTING.md)
+<br /><br />
+The PWA Kit is a storefront technology for headless commerce using Salesforce Commerce APIs and React. It provides front-end developers with a more flexible and agile approach to build and maintain modern shopping experiences.
+<br/><br/>
+<img alt="pwa-kit banner" src="https://raw.githubusercontent.com/SalesforceCommerceCloud/pwa-kit/develop/packages/template-retail-react-app/app/static/img/hero.png" style="width: 700px; height:auto;">
+
+</div>
+
+---
+
+## 🏄 Get Started
+
+### Requirements
+
+-   Node 18 or later
+-   npm 9 or later
+
+### Create Your First Project
+
+```bash
+npx @salesforce/pwa-kit-create-app
 ```
-  Node ^12.x or ^14.x
-  npm ^6.14.4
-```
 
-## Getting Started
+Enter your [sandbox configuration](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/getting-started.html#new-project).
 
-To start your web server for local development, run the following command in your project directory:
+### Run the Project Locally
 
 ```bash
 npm start
 ```
 
-Now that the development server is running, you can open a browser and preview your commerce app:
+### Deploy to Managed Runtime
 
--   Go to http://localhost:8080/
-
-## Localization
-
-See the [Localization README.md](./app/translations/README.md) for important setup instructions for localization.
-
-## Retail Project Configurations
-
-The Retail React App's configuration is located within the `app/config` folder, and more specifically the `default.js` file. Within this file you can make changes to how your application runs on the Managed Runtime via your SSR options like `ssrParameters`, `pageNotFoundURL`, etc. Similarly you can make changes to how your Retail React App works by changing the configuration options under the `app` key. Some of those options are your Commerce API and Einstein API connection strings, your URL settings, and site and site alias configurations.
-
-The sites supported by your application are defined in a file called `config/sites.js`. Here, you can synchronize the sites supported by your Retail App and those defined in your Business Manager backend. 
-
-The configuration features include:
-
-1. Using `.js`, `.yml`, `.yaml`, or `.json` to define your configuration. 
-3. Chose whether locale and site options are available in the URL query parameters, sub-path, or not appear at all.
-4. Optionally assign aliases to locale ID and site ID. 
-5. Manage multiple business manager sites that are hosted in the same domain.
-6. Manage multiple business manager sites based on multiple domains that can be deployed to different Managed Runtime environments.
-
-### Dedicated Configuration Files
-
-At project generation a single `default` configuration is created. For most cases a single configuration file will get the job done. But there are times when you want to have a different configuration for a different environment. These environments for example could be, a developers local machine, a remote `production` environment, or a remote `staging` environment. In all these cases you want to use a different configuration for each. 
-
-When multiple configurations are present, here's how the correct configuration file is chosen:
-
-1. Check to see if there is a config file named after your remote Managed Runtime environment and use this if one is present.
-2. If we are running on a developer machine, look for a `local` configuration and use this if one is present.
-3. Load the `default` config file `config/default.js`.
-
-This configuration system allows you to do the following:
-
-- Each developer can have their own configuration, connection to their own Commerce API sandboxes.
-- Deploy a single codebase application to multiple environments with their own specific configurations (Multiple B2C Site with Different Domains).
-
-
-### Customize URLs
-
-You can customize how storefront URLs are formatted in `config/default.js`. The Retail React App allows you to configure site or locale references (ids or aliases) to be in the path or a query parameter. You can also not have them in the URL altogether. 
-
-```js
-// config/default.js
-module.exports = {
-    url: {
-        locale: 'path|query_param|none',
-        site: 'path|query_param|none',
-        showDefaults: false|true
-    }
-}
 ```
-You can choose how the current locale appears (or doesn't appear) in the URL by setting `url.locale` to one of the following values:
-
-- `path`: Locale is included in the URL path. Example: `/en-US/women/dress`
-- `query_param`: Locale is included as a query parameter. Example: `/women/dress?locale=en-US`
-- `none`: Locale isn’t included in the URL. Example: `/women/dress`
-
-`url.showDefaults`: This boolean value dictates whether the default site or locale values are shown in the url. Defaults to: false. 
-
-By default, a new project is configured to not include the locale and site in the URL path.
-
-### Manage Multiple B2C Commerce Sites with Same Domain
-
-By default, the Retail App is configured to a single locale, single site project. However, it can be extended to run multiple sites in one single code base. 
-
-The `sites.js` file contains definition of the sites that you have configured in Business Manager. The following example shows configuration for `{COMMERCE-CLOUD-SITE-ID}` and `{COMMERCE-CLOUD-SITE-ID}Global` sites:
-
-```js
-// /config/sites.js
-
-module.exports = [
-    {
-        id: '{COMMERCE-CLOUD-SITE-ID}',
-        l10n: {
-            supportedCurrencies: ['USD'],
-            defaultCurrency: 'USD',
-            defaultLocale: 'en-US',
-            supportedLocales: [
-                {
-                    id: 'en-US',
-                    alias: 'us',
-                    preferredCurrency: 'USD'
-                },
-                {
-                    id: 'en-CA',
-                    preferredCurrency: 'USD'
-                }
-            ]
-        }
-    },
-    {
-        id: '{COMMERCE-CLOUD-SITE-ID}Global',
-        l10n: {
-            supportedCurrencies: ['GBP', 'EUR', 'JPY'],
-            defaultCurrency: 'GBP',
-            supportedLocales: [
-                {
-                    id: 'de-DE',
-                    alias: 'de',
-                    preferredCurrency: 'EUR'
-                },
-                {
-                    id: 'en-GB',
-                    preferredCurrency: 'GBP'
-                },
-                {
-                    id: 'ja-JP',
-                    preferredCurrency: 'JPY'
-                }
-            ],
-            defaultLocale: 'en-GB'
-        }
-    }
-]
+npm run push -- -m "Message to help you recognize this bundle"
 ```
 
-Optionally, You can then map the site IDs with aliases in `/config/default.js` file and also set default site. If no alias is defined for the site, then IDs are used in URLs. 
+**Important**: Access to the [Runtime Admin](https://runtime.commercecloud.com/) application is required to deploy bundles. To learn more, read our guide to [Push and Deploy Bundles](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/pushing-and-deploying-bundles.html).
 
-```js
-// /config/default.js
-module.exports = {
-    defaultSite: '{COMMERCE-CLOUD-SITE-ID}Global',
-    siteAliases: {
-        {COMMERCE-CLOUD-SITE-ID}: 'us',
-        {COMMERCE-CLOUD-SITE-ID}Global: 'global',
-        NTOManaged: 'nto'
-    },
-    // the rest of the config
-} 
-  
-```
+## 🌍 Localization
 
-If you set `url.showDefault` to `true` in `/config/default.js` file, then default locale and site are set in the URL of your Retail app. In addition to site alias, you can also configure aliases for your locale in `sites.js` file. If you configured alias, URL will reflect that instead of your locale ID. 
+See the [Localization README.md](./packages/template-retail-react-app/translations/README.md) for important setup instructions for localization.
 
-> *Note*: URLs constructed using canonical site and locale ids are still valid URLs even when aliases are used.   
+## ⚠️ License Information
 
-## Cloudinary main SFCC cartridges
-For more information, see the [SFCC cartridge repo](https://github.com/cloudinary/cloudinary_sfcc_site_cartridge).
+The PWA Kit is licensed under a BSD 3-Clause license. See the [license](./LICENSE) for details.
 
-## Documentation
+## ➕ Contribute
 
-The full documentation for PWA Kit is hosted on the [Salesforce Developers](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/overview) portal.
+Your contributions are welcome! Refer to the [CONTRIBUTING](./CONTRIBUTING.md) guide to get started. If you like `pwa-kit`, consider adding a ⭐ on the [GitHub Repo](https://github.com/SalesforceCommerceCloud/pwa-kit/). It helps other people discover PWA Kit!
 
+## 🛠️ Nightly Builds
+
+⚠️ PWA Kit releases nightly builds on a nightly cadence for better visibility about upcoming features and a chance for implementers to test code integrations via a "preview" release. These builds are untested and unsupported. Use at your own risk!
+Nightly builds carry none of our guarantees associated with well-tested software. **Do not use these builds in production**.
+Some feature included in the nightly builds may not be included in final PWA Kit releases.
+These unreleased builds may not even load, may have undocumented features, known defects, and any number of other issues.
+They are intended for use by developers and others wishing to get early access to planned PWA Kit features.
+
+## 📖 Documentation
+
+The full documentation for PWA Kit and Managed Runtime is hosted on the [Salesforce Developers](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/overview) portal.
 
 ### Useful Links:
 
--   [Getting Started](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/getting-started.html)
--   [Setting Up API Access](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/setting-up-api-access.html)
+-   [Get Started](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/getting-started.html)
+-   [Skills for Success](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/skills-for-success.html)
+-   [Set Up API Access](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/setting-up-api-access.html)
 -   [Configuration Options](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/configuration-options.html)
--   [Pushing and Deploying Bundles](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/pushing-and-deploying-bundles.html)
+-   [Proxy Requests](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/proxying-requests.html)
+-   [Push and Deploy Bundles](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/pushing-and-deploying-bundles.html)
 -   [The Retail React App](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/retail-react-app.html)
--   [Proxying Requests](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/proxying-requests.html)
--   [Cloudinary Documentation](https://cloudinary.com/documentation/sfcc_b2c_commerce_cartridge_headless)
+-   [Rendering](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/rendering.html)
+-   [Routing](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/routing.html)
+-   [Phased Headless Rollouts](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/phased-headless-rollouts.html)
+-   [Launch Your Storefront](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/launching-your-storefront.html)
 
+## 🔮 Forward-Looking Statements
 
-
+This repository may contain forward-looking statements that involve risks, uncertainties, and assumptions. For more information, see [STATEMENTS](STATEMENTS.md)
