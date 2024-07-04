@@ -57,7 +57,7 @@ const CloudinaryImageGallery = ({size, cloudinaryImageGallery = {}}) => {
                         <>
                             <Box {...styles.heroImageGroup}>
                                 <AspectRatio {...styles.heroImage} ratio={1}>
-                                    <DynamicImage src={`${imageUrl.url}[?sw={width}&q=60]`} />
+                                    <DynamicImage src={`${imageUrl.url.lastIndexOf('?') > -1 ? imageUrl.url.substring(0, imageUrl.url.lastIndexOf('?')) + '?_i=AP3' : imageUrl.url + '?_i=AP3'}[?sw={width}&q=60]`} />
                                 </AspectRatio>
                             </Box>
                             <List display={'flex'} flexWrap={'wrap'}>
@@ -79,7 +79,7 @@ const CloudinaryImageGallery = ({size, cloudinaryImageGallery = {}}) => {
                                             borderWidth={`${selected ? '1px' : 0}`}
                                         >
                                             <AspectRatio ratio={1}>
-                                                <Img src={image.url} />
+                                                <Img src={image.url.lastIndexOf('?') > -1 ? image.url.substring(0, image.url.lastIndexOf('?')) + '?_i=AP3' : image.url + '?_i=AP3'} />
                                             </AspectRatio>
                                         </ListItem>
                                     )

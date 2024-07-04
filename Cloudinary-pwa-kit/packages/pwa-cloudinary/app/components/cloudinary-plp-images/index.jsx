@@ -1,8 +1,8 @@
-import React, {useEffect} from 'react'
+import React, { useEffect } from 'react'
 import PropTypes from 'prop-types'
 import DynamicImage from '@salesforce/retail-react-app/app/components/dynamic-image'
 
-const CloudinaryPlpImage = ({cloudinaryImage = {}, dynamicImageProps = {}, image = {}}) => {
+const CloudinaryPlpImage = ({ cloudinaryImage = {}, dynamicImageProps = {}, image = {} }) => {
     if (typeof window !== 'undefined' && cloudinaryImage.url) {
         useEffect(() => {
             const width = cloudinaryImage.c_autoResponsiveDimensions.replace(
@@ -18,7 +18,7 @@ const CloudinaryPlpImage = ({cloudinaryImage = {}, dynamicImageProps = {}, image
     }
     return (
         <DynamicImage
-            src={`${cloudinaryImage.url}[?sw={width}&q=60]`}
+            src={`${cloudinaryImage.url.lastIndexOf('?') > -1 ? cloudinaryImage.url.substring(0, cloudinaryImage.url.lastIndexOf('?')) + '?_i=AP3' : cloudinaryImage.url + '?_i=AP3'}`}
             widths={dynamicImageProps?.widths}
             imageProps={{
                 alt: image.alt,

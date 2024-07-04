@@ -103,6 +103,17 @@ const Home = () => {
         {/* Cloudinary Custom Code Ends */ }
     }, [])
 
+    useEffect(() => {
+        productSearchResult?.hits?.map((prd) => {
+            if (prd.c_cloudinary?.url) {
+                let url = prd.c_cloudinary.url
+                prd.c_cloudinary.url = url.lastIndexOf('?') > -1
+                    ? url.substring(0, url.lastIndexOf('?')) + '?_i=AP3'
+                    : url + '?_i=AP3';
+            }
+        })
+    }, [productSearchResult])
+
 
     return (
         <Box data-testid="home-page" layerStyle="page">

@@ -9,7 +9,7 @@ const CloudinaryImageSwatches = ({ cloudinaryImageGallery = {}, image = {}, valu
     cloudinaryImageGallery.cldSwatchs.map((cldSwatch) => {
         const { variationAttrValueID, cldUrl } = cldSwatch
         if (value === variationAttrValueID) {
-            image.disBaseLink = cldUrl
+            image.disBaseLink = cldUrl.lastIndexOf('?') > -1 ? cldUrl.substring(0, cldUrl.lastIndexOf('?') ) + '?_i=AP3' : cldUrl +'?_i=AP3'
         }
     })
     return (

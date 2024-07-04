@@ -12,6 +12,7 @@ const RenderCloudinaryVideoPlayer = ({ cloudinaryImageGallery = {} }) => {
                     if (document.querySelector('.cld-video-player') && !document.querySelector('.cld-video-player').classList.contains('video-js')) {
                         const cld = cloudinary.Cloudinary.new({ cloud_name: cldObj.cloudName })
                         if (cld.videoPlayer) {
+                            cldObj.video.videoURL = cldObj.video.videoURL.lastIndexOf('?') > -1 ? cldObj.video.videoURL.substring(0, cldObj.video.videoURL.lastIndexOf('?') ) + '?_i=AP3' : cldObj.video.videoURL +'?_i=AP3'
                             const player = cld.videoPlayer(
                                 'cld-video-player' + (videoPlayerID ? '-' + videoPlayerID : ''),
                                 cldObj.video.widgetOptions
