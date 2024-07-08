@@ -19,7 +19,7 @@ const CloudinaryLineItemImage = ({ cldProduct = {}, image = {} }) => {
                     {cldProduct?.url && (
                         <Image
                             alt={image.alt}
-                            src={cldProduct.url.lastIndexOf('?') > -1 ? cldProduct.url.substring(0, cldProduct.url.lastIndexOf('?') ) + '?_i=AP3' : cldProduct.url +'?_i=AP3'}
+                            src={`${cldProduct.url.lastIndexOf('?') > -1 ? cldProduct.url.substring(0, cldProduct.url.lastIndexOf('?') ) + '?_i=AP3' : cldProduct.url +'?_i=AP3'}`}
                             ignoreFallback={true}
                         />
                     )}
