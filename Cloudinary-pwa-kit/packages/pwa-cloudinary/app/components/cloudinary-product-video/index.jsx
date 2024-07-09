@@ -18,7 +18,11 @@ const RenderCloudinaryVideoPlayer = ({ cloudinaryImageGallery = {} }) => {
                                 'cld-video-player' + (videoPlayerID ? '-' + videoPlayerID : ''),
                                 cldObj.video.widgetOptions
                             )
-                            player.source(cldObj.video.videoURL, {}).play()
+                            player.source(cldObj.video.videoURL, {
+                                queryParams: {
+                                    [cloudinary.CLD_TRACKING_PARAM.slice(1).split('=')[0]]: cloudinary.CLD_TRACKING_PARAM.slice(1).split('=')[1]
+                                }
+                            }).play()
                             player.transformation(cldObj.video.widgetOptions.transformations)
                         }
                     }
