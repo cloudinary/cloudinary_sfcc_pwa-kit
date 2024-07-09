@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
 import PropTypes from 'prop-types'
+import { cloudinary } from '../../../config/default'
 
 const RenderCloudinaryGalleryWidget = ({ cloudinaryImageGallery = {} }) => {
 
@@ -10,7 +11,8 @@ const RenderCloudinaryGalleryWidget = ({ cloudinaryImageGallery = {} }) => {
             gallery.removeChild(gallery.firstChild)
         }
         if (cloudinaryObj && cloudinaryObj.galleryEnabled) {
-            const galleryOptions = cloudinaryObj.cloudinaryImage.galleryWidget.options
+            let galleryOptions = cloudinaryObj.cloudinaryImage.galleryWidget.options
+            galleryOptions.queryParam = cloudinary.CLD_PGW_TRACKING_PARAM
             if (typeof window !== 'undefined' && window.cloudinary && window.cloudinary.galleryWidget) {
                 const cldGallery = window.cloudinary.galleryWidget(galleryOptions)
                 cldGallery.render()
