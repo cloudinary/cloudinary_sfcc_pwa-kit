@@ -11,16 +11,22 @@ const CloudinaryLineItemImage = ({ cldProduct = {}, image = {} }) => {
             {cldProduct?.miniCartImage?.url ? (
                 <Box w="24" flex="none">
                     <AspectRatio ratio="1">
-                        <img src={cldProduct?.miniCartImage?.url} alt={image && image.alt ? image.alt : null} />
+                        <Image className={cldProduct?.miniCartImage?.isResponsive && 'cld-responsive'}
+                            src={cldProduct?.miniCartImage?.url}
+                            srcset={!cldProduct?.miniCartImage?.isResponsive && cldProduct?.miniCartImage?.srcset}
+                            sizes={!cldProduct?.miniCartImage?.isResponsive && cldProduct?.miniCartImage?.sizes}
+                        />
                     </AspectRatio>
                 </Box>
             ) : (
                 <>
                     {cldProduct?.url && (
                         <Image
+                            className={cldProduct?.isResponsive && 'cld-responsive'}
                             alt={image.alt}
                             src={`${cldProduct.url}`}
-                            ignoreFallback={true}
+                            srcset={!cldProduct.isResponsive && cldProduct.srcset}
+                            sizes={!cldProduct.isResponsive && cldProduct.sizes}
                         />
                     )}
                 </>

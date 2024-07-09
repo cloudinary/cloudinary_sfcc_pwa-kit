@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: BSD-3-Clause
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
-import React, {useState, useEffect} from 'react'
+import React, { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
-import {AspectRatio, Box, Img, Flex, ListItem, List, useMultiStyleConfig} from '@chakra-ui/react'
+import { AspectRatio, Box, Img, Flex, ListItem, List, useMultiStyleConfig } from '@chakra-ui/react'
 import DynamicImage from '@salesforce/retail-react-app/app/components/dynamic-image'
 import RenderCloudinaryGalleryWidget from '../../components/cloudinary-widgets'
 import RenderCloudinaryVideoPlayer from '../../components/cloudinary-product-video'
@@ -16,7 +16,7 @@ const EnterKeyNumber = 13
 /**
  * The image gallery displays The Image Gallery Coming from Cloudinary in Product-Detail Page.
  */
-const CloudinaryImageGallery = ({size, cloudinaryImageGallery = {}}) => {
+const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
     const [selectedIndex, setSelectedIndex] = useState(0)
     const [isScriptLoaded, setIsScriptLoaded] = useState(false)
     let imageUrls
@@ -57,7 +57,11 @@ const CloudinaryImageGallery = ({size, cloudinaryImageGallery = {}}) => {
                         <>
                             <Box {...styles.heroImageGroup}>
                                 <AspectRatio {...styles.heroImage} ratio={1}>
-                                    <DynamicImage src={`${imageUrl.url}[?sw={width}&q=60]`} />
+                                    <Img className={imageUrl?.isResponsive && 'cld-responsive'}
+                                        src={`${imageUrl.url}[?sw={width}&q=60]`}
+                                        srcset={!imageUrl?.isResponsive && imageUrl?.srcset}
+                                        sizes={!imageUrl?.isResponsive && imageUrl?.sizes}
+                                    />
                                 </AspectRatio>
                             </Box>
                             <List display={'flex'} flexWrap={'wrap'}>
@@ -79,7 +83,11 @@ const CloudinaryImageGallery = ({size, cloudinaryImageGallery = {}}) => {
                                             borderWidth={`${selected ? '1px' : 0}`}
                                         >
                                             <AspectRatio ratio={1}>
-                                                <Img src={image.url} />
+                                                <Img className={image?.isResponsive && 'cld-responsive'}
+                                                    src={image.url}
+                                                    srcset={!image?.isResponsive && image?.srcset}
+                                                    sizes={!image?.isResponsive && image?.sizes}
+                                                />
                                             </AspectRatio>
                                         </ListItem>
                                     )
