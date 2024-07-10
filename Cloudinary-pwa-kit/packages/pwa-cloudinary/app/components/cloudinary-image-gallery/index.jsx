@@ -10,6 +10,7 @@ import { AspectRatio, Box, Img, Flex, ListItem, List, useMultiStyleConfig } from
 import RenderCloudinaryGalleryWidget from '../../components/cloudinary-widgets'
 import RenderCloudinaryVideoPlayer from '../../components/cloudinary-product-video'
 import { cloudinary } from '../../../config/default'
+import { updateTrackingParam } from '../../utils/imageSrcset'
 
 const EnterKeyNumber = 13
 
@@ -59,7 +60,7 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
                                 <AspectRatio {...styles.heroImage} ratio={1}>
                                     <Img className={imageUrl?.isResponsive && 'cld-responsive'}
                                         src={`${imageUrl.url.lastIndexOf('?') > -1 ? imageUrl.url.substring(0, imageUrl.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : imageUrl.url + cloudinary.CLD_TRACKING_PARAM}`}
-                                        srcset={!imageUrl?.isResponsive && imageUrl?.srcset}
+                                        srcset={!imageUrl?.isResponsive && imageUrl?.srcset && updateTrackingParam(imageUrl?.srcset)}
                                         sizes={!imageUrl?.isResponsive && imageUrl?.sizes}
                                     />
                                 </AspectRatio>
@@ -85,7 +86,7 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
                                             <AspectRatio ratio={1}>
                                                 <Img className={image?.isResponsive && 'cld-responsive'}
                                                     src={image.url.lastIndexOf('?') > -1 ? image.url.substring(0, image.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : image.url + cloudinary.CLD_TRACKING_PARAM}
-                                                    srcset={!image?.isResponsive && image?.srcset}
+                                                    srcset={!image?.isResponsive && image?.srcset && updateTrackingParam(image?.srcset)}
                                                     sizes={!image?.isResponsive && image?.sizes}
                                                 />
                                             </AspectRatio>
