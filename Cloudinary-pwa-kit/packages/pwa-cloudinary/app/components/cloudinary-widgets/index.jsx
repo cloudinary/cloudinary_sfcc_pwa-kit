@@ -5,15 +5,15 @@ import { cloudinary } from '../../../config/default'
 const RenderCloudinaryGalleryWidget = ({ cloudinaryImageGallery = {} }) => {
 
     useEffect(() => {
+        const gallery = document.querySelector('#cld-gallery');
+        while (gallery.firstChild) {
+            gallery.removeChild(gallery.firstChild)
+        }
         if (cloudinaryImageGallery && cloudinaryImageGallery.galleryEnabled) {
             const galleryOptions = cloudinaryImageGallery.cloudinaryImage.galleryWidget.options
             galleryOptions.queryParam = cloudinary.CLD_PGW_TRACKING_PARAM
             if (typeof window !== 'undefined' && window.cloudinary && window.cloudinary.galleryWidget) {
-                if (window.cldGallery) {
-                    cldGallery.update(galleryOptions)
-                } else {
-                    window.cldGallery = window.cloudinary.galleryWidget(galleryOptions)
-                }
+                const cldGallery = window.cloudinary.galleryWidget(galleryOptions)
                 cldGallery.render()
             }
         }
