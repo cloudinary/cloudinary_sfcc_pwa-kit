@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { Img } from '@chakra-ui/react'
+import { cloudinary } from '../../../config/default'
 
 const CloudinaryPlpImage = ({ cloudinaryImage = {}, dynamicImageProps = {}, image = {} }) => {
     if (typeof window !== 'undefined' && cloudinaryImage.url) {
@@ -18,7 +19,7 @@ const CloudinaryPlpImage = ({ cloudinaryImage = {}, dynamicImageProps = {}, imag
     }
     return (
         <Img className={cloudinaryImage?.isResponsive && 'cld-responsive'}
-            src={`${cloudinaryImage.url}[?sw={width}&q=60]`}
+            src={`${cloudinaryImage.url.lastIndexOf('?') > -1 ? cloudinaryImage.url.substring(0, cloudinaryImage.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : cloudinaryImage.url + cloudinary.CLD_TRACKING_PARAM}`}
             alt={image?.alt}
             srcset={!cloudinaryImage?.isResponsive && cloudinaryImage?.srcset}
             sizes={!cloudinaryImage?.isResponsive && cloudinaryImage?.sizes}
