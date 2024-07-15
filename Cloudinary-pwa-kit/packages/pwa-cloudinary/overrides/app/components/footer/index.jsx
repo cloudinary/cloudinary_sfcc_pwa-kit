@@ -45,7 +45,9 @@ const Footer = ({ ...otherProps }) => {
     const { l10n } = site
     const supportedLocaleIds = l10n?.supportedLocales.map((locale) => locale.id)
     const showLocaleSelector = supportedLocaleIds?.length > 1
-
+    const cloudinaryCore = `https://unpkg.com/cloudinary-core@${cloudinary.versions.CLDCoreShrinkwrapJSURLVersion}/cloudinary-core-shrinkwrap.min.js`
+    const cloudinaryVideoPlayerJS = `https://unpkg.com/cloudinary-video-player@${cloudinary.versions.CLDVideoPlayerVersion}/dist/cld-video-player.min.js`
+    const cloudinaryVideoPlayerCSS = `https://unpkg.com/cloudinary-video-player@${cloudinary.versions.CLDVideoPlayerVersion}/dist/cld-video-player.min.css`
     // NOTE: this is a workaround to fix hydration error, by making sure that the `option.selected` property is set.
     // For some reason, adding some styles prop (to the option element) prevented `selected` from being set.
     // So now we add the styling to the parent element instead.
@@ -56,16 +58,15 @@ const Footer = ({ ...otherProps }) => {
 
     return (
         <Box as="footer" {...styles.container} {...otherProps}>
-
             {/** Cloudinary Custom Code Starts */}
             <Helmet>
-                <script src={`https://unpkg.com/cloudinary-core@${cloudinary.versions.CLDCoreShrinkwrapJSURLVersion}/cloudinary-core-shrinkwrap.min.js`} />
+                <script src={cloudinaryCore} />
             </Helmet>
             <Helmet>
-                <script src={`https://unpkg.com/cloudinary-video-player@${cloudinary.versions.cldVideoPlayerVersion}/dist/cld-video-player.min.js`} />
+                <script src={cloudinaryVideoPlayerJS} />
             </Helmet>
             <Helmet>
-                <link rel="stylesheet" href={`https://unpkg.com/cloudinary-video-player@${cloudinary.versions.cldVideoPlayerVersion}/dist/cld-video-player.min.css`} />
+                <link rel="stylesheet" href={cloudinaryVideoPlayerCSS} />
             </Helmet>
             {/** Cloudinary Custom Code Ends */}
 
