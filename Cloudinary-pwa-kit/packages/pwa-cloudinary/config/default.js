@@ -91,6 +91,8 @@ module.exports = {
         versions: {
             CLDVideoPlayeVersion: '1.10.1',
             CLDCoreShrinkwrapJSURLVersion: '2.13.0'
-        }
+        },
+        CLD_TRACKING_PARAM: '?_i=AP3',
+        CLD_PGW_TRACKING_PARAM: 'AP3'
     }
 }
