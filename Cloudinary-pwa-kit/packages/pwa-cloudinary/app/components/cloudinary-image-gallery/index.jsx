@@ -7,10 +7,10 @@
 import React, { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { AspectRatio, Box, Img, Flex, ListItem, List, useMultiStyleConfig } from '@chakra-ui/react'
-import DynamicImage from '@salesforce/retail-react-app/app/components/dynamic-image'
 import RenderCloudinaryGalleryWidget from '../../components/cloudinary-widgets'
 import RenderCloudinaryVideoPlayer from '../../components/cloudinary-product-video'
 import { cloudinary } from '../../../config/default'
+import { updateTrackingParam } from '../../utils/imageSrcset'
 
 const EnterKeyNumber = 13
 
@@ -58,7 +58,11 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
                         <>
                             <Box {...styles.heroImageGroup}>
                                 <AspectRatio {...styles.heroImage} ratio={1}>
-                                    <DynamicImage src={`${imageUrl.url.lastIndexOf('?') > -1 ? imageUrl.url.substring(0, imageUrl.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : imageUrl.url + cloudinary.CLD_TRACKING_PARAM}[?sw={width}&q=60]`} />
+                                    <Img className={imageUrl?.isResponsive && 'cld-responsive'}
+                                        src={`${imageUrl.url.lastIndexOf('?') > -1 ? imageUrl.url.substring(0, imageUrl.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : imageUrl.url + cloudinary.CLD_TRACKING_PARAM}`}
+                                        srcset={!imageUrl?.isResponsive && imageUrl?.srcset && updateTrackingParam(imageUrl?.srcset)}
+                                        sizes={!imageUrl?.isResponsive && imageUrl?.sizes}
+                                    />
                                 </AspectRatio>
                             </Box>
                             <List display={'flex'} flexWrap={'wrap'}>
@@ -80,7 +84,11 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
                                             borderWidth={`${selected ? '1px' : 0}`}
                                         >
                                             <AspectRatio ratio={1}>
-                                                <Img src={image.url.lastIndexOf('?') > -1 ? image.url.substring(0, image.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : image.url + cloudinary.CLD_TRACKING_PARAM} />
+                                                <Img className={image?.isResponsive && 'cld-responsive'}
+                                                    src={image.url.lastIndexOf('?') > -1 ? image.url.substring(0, image.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : image.url + cloudinary.CLD_TRACKING_PARAM}
+                                                    srcset={!image?.isResponsive && image?.srcset && updateTrackingParam(image?.srcset)}
+                                                    sizes={!image?.isResponsive && image?.sizes}
+                                                />
                                             </AspectRatio>
                                         </ListItem>
                                     )
