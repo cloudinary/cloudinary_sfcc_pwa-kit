@@ -1,6 +1,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { Box } from '@chakra-ui/react'
+import { cloudinary } from '../../../config/default'
 
 /**
  * The swatch images displays The Swatch Images Coming from Cloudinary in Product-Detail Page.
@@ -9,7 +10,7 @@ const CloudinaryImageSwatches = ({ cloudinaryImageGallery = {}, image = {}, valu
     cloudinaryImageGallery.cldSwatchs.map((cldSwatch) => {
         const { variationAttrValueID, cldUrl } = cldSwatch
         if (value === variationAttrValueID) {
-            image.disBaseLink = cldUrl
+            image.disBaseLink = cldUrl.lastIndexOf('?') > -1 ? cldUrl.substring(0, cldUrl.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : cldUrl + cloudinary.CLD_TRACKING_PARAM
         }
     })
     return (
