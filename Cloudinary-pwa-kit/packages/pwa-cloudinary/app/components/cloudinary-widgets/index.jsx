@@ -9,10 +9,10 @@ const RenderCloudinaryGalleryWidget = ({ cloudinaryImageGallery = {} }) => {
         galleryOptions.queryParam = cloudinary.CLD_PGW_TRACKING_PARAM
         if (typeof window !== 'undefined' && window.cloudinary && window.cloudinary.galleryWidget) {
             if (window.cldGallery) {
-                await cldGallery.update(galleryOptions)
+                await window.cldGallery.update(galleryOptions)
             } else {
                 window.cldGallery = window.cloudinary.galleryWidget(galleryOptions)
-                cldGallery.render()
+                window.cldGallery.render()
             }
         }
     }
