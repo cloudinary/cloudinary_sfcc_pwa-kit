@@ -10,7 +10,7 @@ const CloudinaryPlpImage = ({ cloudinaryImage = {}, dynamicImageProps = {}, imag
             const width = cloudinaryImage.c_autoResponsiveDimensions.replace(
                 'auto',
                 window.innerWidth
-            )
+            ).replace('c_scale', 'c_limit')
             const replacedUrl = cloudinaryImage.url.replace(
                 cloudinaryImage.c_autoResponsiveDimensions,
                 width
