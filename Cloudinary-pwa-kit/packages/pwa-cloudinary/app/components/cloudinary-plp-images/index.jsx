@@ -7,10 +7,10 @@ import { updateTrackingParam } from '../../utils/imageSrcset'
 const CloudinaryPlpImage = ({ cloudinaryImage = {}, dynamicImageProps = {}, image = {} }) => {
     if (typeof window !== 'undefined' && cloudinaryImage.url) {
         useEffect(() => {
-            const width = cloudinaryImage.c_autoResponsiveDimensions.replace(
+            const width = cloudinaryImage.c_autoResponsiveDimensions.replace('w_auto,c_scale', 'w_auto,c_limit').replace(
                 'auto',
                 window.innerWidth
-            ).replace('c_scale', 'c_limit')
+            )
             const replacedUrl = cloudinaryImage.url.replace(
                 cloudinaryImage.c_autoResponsiveDimensions,
                 width
