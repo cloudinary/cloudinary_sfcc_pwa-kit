@@ -95,7 +95,6 @@ const ProductTile = (props) => {
                         {product && c_cloudinary?.plpEnabled ? (
                             <CloudinaryPlpImage
                                 cloudinaryImage={c_cloudinary}
-                                dynamicImageProps={dynamicImageProps}
                                 image={image}
                             />
                         ) : (
