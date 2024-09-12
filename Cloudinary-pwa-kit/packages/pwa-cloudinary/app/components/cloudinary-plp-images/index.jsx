@@ -12,7 +12,7 @@ const CloudinaryPlpImage = ({ cloudinaryImage = {}, image = {} }) => {
         }, [])
     }
     return (
-        <Img className={cloudinaryImage?.isResponsive && 'cld-responsive'}
+        <Img className={cloudinaryImage?.isResponsive ? 'cld-responsive' : ''}
             src={`${cloudinaryImage.url.lastIndexOf('?') > -1 ? cloudinaryImage.url.substring(0, cloudinaryImage.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : cloudinaryImage.url + cloudinary.CLD_TRACKING_PARAM}`}
             alt={image?.alt}
             srcset={!cloudinaryImage?.isResponsive && cloudinaryImage.srcset && updateTrackingParam(cloudinaryImage.srcset)}

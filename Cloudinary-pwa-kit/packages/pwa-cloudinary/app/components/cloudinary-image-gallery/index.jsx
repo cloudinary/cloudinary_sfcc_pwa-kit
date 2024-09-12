@@ -58,9 +58,9 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
                         <>
                             <Box {...styles.heroImageGroup}>
                                 <AspectRatio {...styles.heroImage} ratio={1}>
-                                    <Img className={imageUrl?.isResponsive && 'cld-responsive'}
+                                    <Img className={imageUrl?.isResponsive ? 'cld-responsive' : ''}
                                         src={`${imageUrl.url.lastIndexOf('?') > -1 ? imageUrl.url.substring(0, imageUrl.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : imageUrl.url + cloudinary.CLD_TRACKING_PARAM}`}
-                                        srcset={!imageUrl?.isResponsive && imageUrl?.srcset && updateTrackingParam(imageUrl?.srcset)}
+                                        srcSet={!imageUrl?.isResponsive && imageUrl?.srcset && updateTrackingParam(imageUrl?.srcset)}
                                         sizes={!imageUrl?.isResponsive && imageUrl?.sizes}
                                     />
                                 </AspectRatio>
@@ -84,9 +84,9 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
                                             borderWidth={`${selected ? '1px' : 0}`}
                                         >
                                             <AspectRatio ratio={1}>
-                                                <Img className={image?.isResponsive && 'cld-responsive'}
+                                                <Img className={image?.isResponsive ? 'cld-responsive' : ''}
                                                     src={image.url.lastIndexOf('?') > -1 ? image.url.substring(0, image.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : image.url + cloudinary.CLD_TRACKING_PARAM}
-                                                    srcset={!image?.isResponsive && image?.srcset && updateTrackingParam(image?.srcset)}
+                                                    srcSet={!image?.isResponsive && image?.srcset && updateTrackingParam(image?.srcset)}
                                                     sizes={!image?.isResponsive && image?.sizes}
                                                 />
                                             </AspectRatio>

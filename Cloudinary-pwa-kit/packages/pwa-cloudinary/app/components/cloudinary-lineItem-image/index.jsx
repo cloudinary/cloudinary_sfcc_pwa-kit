@@ -13,9 +13,9 @@ const CloudinaryLineItemImage = ({ cldProduct = {}, image = {} }) => {
             {cldProduct?.miniCartImage?.url ? (
                 <Box w="24" flex="none">
                     <AspectRatio ratio="1">
-                        <Image className={cldProduct?.miniCartImage?.isResponsive && 'cld-responsive'}
+                        <Image className={cldProduct?.miniCartImage?.isResponsive ? 'cld-responsive' : ''}
                             src={cldProduct?.miniCartImage?.url.lastIndexOf('?') > -1 ? cldProduct?.miniCartImage?.url.substring(0, cldProduct?.miniCartImage?.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : cldProduct?.miniCartImage?.url + cloudinary.CLD_TRACKING_PARAM} alt={image && image.alt ? image.alt : null}
-                            srcset={!cldProduct?.miniCartImage?.isResponsive && cldProduct?.miniCartImage?.srcset && updateTrackingParam(cldProduct?.miniCartImage?.srcset)}
+                            srcSet={!cldProduct?.miniCartImage?.isResponsive && cldProduct?.miniCartImage?.srcset && updateTrackingParam(cldProduct?.miniCartImage?.srcset)}
                             sizes={!cldProduct?.miniCartImage?.isResponsive && cldProduct?.miniCartImage?.sizes}
                         />
                     </AspectRatio>
@@ -24,10 +24,10 @@ const CloudinaryLineItemImage = ({ cldProduct = {}, image = {} }) => {
                 <>
                     {cldProduct?.url && (
                         <Image
-                            className={cldProduct?.isResponsive && 'cld-responsive'}
+                            className={cldProduct?.isResponsive ? 'cld-responsive' : ''}
                             alt={image.alt}
                             src={`${cldProduct.url.lastIndexOf('?') > -1 ? cldProduct.url.substring(0, cldProduct.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : cldProduct.url + cloudinary.CLD_TRACKING_PARAM}`}
-                            srcset={!cldProduct.isResponsive && cldProduct.srcset && updateTrackingParam(cldProduct.srcset)}
+                            srcSet={!cldProduct.isResponsive && cldProduct.srcset && updateTrackingParam(cldProduct.srcset)}
                             sizes={!cldProduct.isResponsive && cldProduct.sizes}
                         />
                     )}
