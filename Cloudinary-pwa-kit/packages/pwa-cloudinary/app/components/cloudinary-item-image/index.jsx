@@ -58,6 +58,7 @@ const ItemImage = ({ imageProps, pageType, ratio = 1, ...props }) => {
                         <CloudinaryLineItemImage
                             cldProduct={variant.c_cloudinary[pageType]}
                             image={image}
+                            cloudName={variant.c_cloudinary.cloudName}
                         />
                     )}
                     {/** Cloudinary Custom Code Ends */}

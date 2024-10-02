@@ -44,6 +44,14 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
         imageUrls = cloudinaryImageGallery?.images?.imageURLs
     }
     const imageUrl = imageUrls ? imageUrls[selectedIndex] : null
+
+    useEffect(() => {
+        if (imageUrl?.isResponsive) {
+            window.cldObj = window.cldObj || window?.cloudinary?.default?.Cloudinary?.new({cloud_name: cloudinaryImageGallery.cloudName || cloudinaryImageGallery}); // eslint-disable-line no-undef
+            window?.cldObj?.responsive();
+        }
+    }, [imageUrl])
+
     return (
         <Flex direction="column">
             {cloudinaryImageGallery.galleryEnabled && isScriptLoaded ? (
@@ -58,11 +66,18 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
                         <>
                             <Box {...styles.heroImageGroup}>
                                 <AspectRatio {...styles.heroImage} ratio={1}>
-                                    <Img className={imageUrl?.isResponsive ? 'cld-responsive' : ''}
-                                        src={`${imageUrl.url.lastIndexOf('?') > -1 ? imageUrl.url.substring(0, imageUrl.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : imageUrl.url + cloudinary.CLD_TRACKING_PARAM}`}
-                                        srcSet={!imageUrl?.isResponsive && imageUrl?.srcset && updateTrackingParam(imageUrl?.srcset)}
-                                        sizes={!imageUrl?.isResponsive && imageUrl?.sizes}
-                                    />
+                                    {imageUrl?.isResponsive ? (
+                                        <Img 
+                                            className={'cld-responsive'}
+                                            data-src={imageUrl.url.lastIndexOf('?') > -1 ? imageUrl.url.substring(0, imageUrl.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : imageUrl.url + cloudinary.CLD_TRACKING_PARAM}
+                                        />
+                                    ) : (
+                                        <Img
+                                            src={imageUrl.url.lastIndexOf('?') > -1 ? imageUrl.url.substring(0, imageUrl.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : imageUrl.url + cloudinary.CLD_TRACKING_PARAM}
+                                            srcSet={imageUrl?.srcset && updateTrackingParam(imageUrl?.srcset)}
+                                            sizes={imageUrl?.sizes && imageUrl?.sizes}
+                                        />
+                                    )}
                                 </AspectRatio>
                             </Box>
                             <List display={'flex'} flexWrap={'wrap'}>
@@ -84,11 +99,18 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
                                             borderWidth={`${selected ? '1px' : 0}`}
                                         >
                                             <AspectRatio ratio={1}>
-                                                <Img className={image?.isResponsive ? 'cld-responsive' : ''}
-                                                    src={image.url.lastIndexOf('?') > -1 ? image.url.substring(0, image.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : image.url + cloudinary.CLD_TRACKING_PARAM}
-                                                    srcSet={!image?.isResponsive && image?.srcset && updateTrackingParam(image?.srcset)}
-                                                    sizes={!image?.isResponsive && image?.sizes}
-                                                />
+                                                {imageUrl?.isResponsive ? (
+                                                    <Img 
+                                                        className={'cld-responsive'}
+                                                        data-src={image.url.lastIndexOf('?') > -1 ? image.url.substring(0, image.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : image.url + cloudinary.CLD_TRACKING_PARAM}
+                                                    />
+                                                ) : (
+                                                    <Img
+                                                        src={image.url.lastIndexOf('?') > -1 ? image.url.substring(0, image.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : image.url + cloudinary.CLD_TRACKING_PARAM}
+                                                        srcset={image?.srcset && updateTrackingParam(imageUrl?.srcset)}
+                                                        sizes={image?.sizes && imageUrl?.sizes}
+                                                    />
+                                                )}
                                             </AspectRatio>
                                         </ListItem>
                                     )
