@@ -10,8 +10,8 @@ const CloudinaryPlpImage = ({ cloudinaryImage = {}, image = {} }) => {
             cloudinaryImage.url = replacedUrl
 
             if (cloudinaryImage?.isResponsive) {
-                window.cldObj = window.cldObj || window?.cloudinary?.default.Cloudinary.new({cloud_name: cloudinaryImage.cloudName || cloudinaryImage})
-                window?.cldObj?.responsive()
+                window.cldObj = window.cldObj || window.cloudinary.default.Cloudinary.new({cloud_name: cloudinaryImage.cloudName || cloudinaryImage})
+                window.cldObj.responsive()
             }
         }, [])
     }
@@ -20,15 +20,15 @@ const CloudinaryPlpImage = ({ cloudinaryImage = {}, image = {} }) => {
             {cloudinaryImage?.isResponsive ? (
                 <Img 
                     className={'cld-responsive'}
-                    alt={image?.alt}
+                    alt={image.alt}
                     data-src={updateCloudinarySource(cloudinaryImage.url)}
                 />
             ) : (
                 <Img
                     src={updateCloudinarySource(cloudinaryImage.url)}
-                    alt={image?.alt}
-                    srcSet={cloudinaryImage?.srcset && updateTrackingParam(cloudinaryImage.srcset)}
-                    sizes={cloudinaryImage?.sizes && cloudinaryImage.sizes}
+                    alt={image.alt}
+                    srcSet={cloudinaryImage.srcset && updateTrackingParam(cloudinaryImage.srcset)}
+                    sizes={cloudinaryImage.sizes && cloudinaryImage.sizes}
                 />
             )}
         </>

@@ -46,8 +46,8 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
 
     useEffect(() => {
         if (imageUrl?.isResponsive) {
-            window.cldObj = window.cldObj || window?.cloudinary?.default.Cloudinary.new({cloud_name: cloudinaryImageGallery.cloudName || cloudinaryImageGallery})
-            window?.cldObj?.responsive()
+            window.cldObj = window.cldObj || window.cloudinary.default.Cloudinary.new({cloud_name: cloudinaryImageGallery.cloudName || cloudinaryImageGallery})
+            window.cldObj.responsive()
         }
     }, [imageUrl])
 
@@ -73,8 +73,8 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
                                     ) : (
                                         <Img
                                             src={updateCloudinarySource(imageUrl.url)}
-                                            srcSet={imageUrl?.srcset && updateTrackingParam(imageUrl.srcset)}
-                                            sizes={imageUrl?.sizes && imageUrl.sizes}
+                                            srcSet={imageUrl.srcset && updateTrackingParam(imageUrl.srcset)}
+                                            sizes={imageUrl.sizes && imageUrl.sizes}
                                         />
                                     )}
                                 </AspectRatio>
@@ -98,7 +98,7 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
                                             borderWidth={`${selected ? '1px' : 0}`}
                                         >
                                             <AspectRatio ratio={1}>
-                                                {imageUrl?.isResponsive ? (
+                                                {imageUrl.isResponsive ? (
                                                     <Img 
                                                         className={'cld-responsive'}
                                                         data-src={updateCloudinarySource(image.url)}
@@ -106,8 +106,8 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
                                                 ) : (
                                                     <Img
                                                         src={updateCloudinarySource(image.url)}
-                                                        srcset={image?.srcset && updateTrackingParam(image.srcset)}
-                                                        sizes={image?.sizes && image.sizes}
+                                                        srcSet={image.srcset && updateTrackingParam(image.srcset)}
+                                                        sizes={image.sizes && image.sizes}
                                                     />
                                                 )}
                                             </AspectRatio>

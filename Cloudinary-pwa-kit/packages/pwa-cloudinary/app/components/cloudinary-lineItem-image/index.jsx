@@ -10,8 +10,8 @@ const CloudinaryLineItemImage = ({ cldProduct = {}, image = {}, cloudName }) => 
 
     useEffect(() => {
         if (cldProduct?.miniCartImage?.isResponsive || cldProduct?.isResponsive) {
-            window.cldObj = window.cldObj || window?.cloudinary?.default.Cloudinary.new({cloud_name: cloudName || cldProduct})
-            window?.cldObj?.responsive()
+            window.cldObj = window.cldObj || window.cloudinary.default.Cloudinary.new({cloud_name: cloudName || cldProduct})
+            window.cldObj.responsive()
         }
     }, [])
 
@@ -22,13 +22,13 @@ const CloudinaryLineItemImage = ({ cldProduct = {}, image = {}, cloudName }) => 
                     <AspectRatio ratio="1">
                         {cldProduct?.miniCartImage?.isResponsive ? (
                             <Image className={'cld-responsive'}
-                                data-src={updateCloudinarySource(cldProduct.miniCartImage.url)} alt={image && image.alt ? image.alt : null}
+                                data-src={updateCloudinarySource(cldProduct.miniCartImage.url)} alt={image?.alt}
                             />
                         ) : (
                             <Image
-                                src={updateCloudinarySource(cldProduct.miniCartImage.url)} alt={image && image.alt ? image.alt : null}
-                                srcSet={cldProduct?.miniCartImage?.srcset && updateTrackingParam(cldProduct.miniCartImage.srcset)}
-                                sizes={cldProduct?.miniCartImage?.sizes && cldProduct.miniCartImage.sizes}
+                                src={updateCloudinarySource(cldProduct.miniCartImage.url)} alt={image?.alt}
+                                srcSet={cldProduct.miniCartImage.srcset && updateTrackingParam(cldProduct.miniCartImage.srcset)}
+                                sizes={cldProduct.miniCartImage.sizes && cldProduct.miniCartImage.sizes}
                             />
                         )}
                     </AspectRatio>
@@ -47,7 +47,7 @@ const CloudinaryLineItemImage = ({ cldProduct = {}, image = {}, cloudName }) => 
                                 <Image
                                     alt={image.alt}
                                     src={updateCloudinarySource(cldProduct.url)}
-                                    srcset={cldProduct.srcset && updateTrackingParam(cldProduct.srcset)}
+                                    srcSet={cldProduct.srcset && updateTrackingParam(cldProduct.srcset)}
                                     sizes={cldProduct.sizes && cldProduct.sizes}
                                 />
                             )}
