@@ -26,9 +26,7 @@ const RenderContentSlots = ({ slotResult }) => {
                     })
                 }
             })
-            if (window?.cldObj) {
-                window?.cldObj?.responsive()
-            }
+            window?.cldObj?.responsive()
         }, [])
     }
     return (

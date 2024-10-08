@@ -9,8 +9,7 @@ import PropTypes from 'prop-types'
 import { AspectRatio, Box, Img, Flex, ListItem, List, useMultiStyleConfig } from '@chakra-ui/react'
 import RenderCloudinaryGalleryWidget from '../../components/cloudinary-widgets'
 import RenderCloudinaryVideoPlayer from '../../components/cloudinary-product-video'
-import { cloudinary } from '../../../config/default'
-import { updateTrackingParam } from '../../utils/imageSrcset'
+import { updateTrackingParam, updateCloudinarySource } from '../../utils/imageSrcset'
 
 const EnterKeyNumber = 13
 
@@ -47,8 +46,8 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
 
     useEffect(() => {
         if (imageUrl?.isResponsive) {
-            window.cldObj = window.cldObj || window?.cloudinary?.default?.Cloudinary?.new({cloud_name: cloudinaryImageGallery.cloudName || cloudinaryImageGallery}); // eslint-disable-line no-undef
-            window?.cldObj?.responsive();
+            window.cldObj = window.cldObj || window?.cloudinary?.default.Cloudinary.new({cloud_name: cloudinaryImageGallery.cloudName || cloudinaryImageGallery})
+            window?.cldObj?.responsive()
         }
     }, [imageUrl])
 
@@ -69,13 +68,13 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
                                     {imageUrl?.isResponsive ? (
                                         <Img 
                                             className={'cld-responsive'}
-                                            data-src={imageUrl.url.lastIndexOf('?') > -1 ? imageUrl.url.substring(0, imageUrl.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : imageUrl.url + cloudinary.CLD_TRACKING_PARAM}
+                                            data-src={updateCloudinarySource(imageUrl.url)}
                                         />
                                     ) : (
                                         <Img
-                                            src={imageUrl.url.lastIndexOf('?') > -1 ? imageUrl.url.substring(0, imageUrl.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : imageUrl.url + cloudinary.CLD_TRACKING_PARAM}
-                                            srcSet={imageUrl?.srcset && updateTrackingParam(imageUrl?.srcset)}
-                                            sizes={imageUrl?.sizes && imageUrl?.sizes}
+                                            src={updateCloudinarySource(imageUrl.url)}
+                                            srcSet={imageUrl?.srcset && updateTrackingParam(imageUrl.srcset)}
+                                            sizes={imageUrl?.sizes && imageUrl.sizes}
                                         />
                                     )}
                                 </AspectRatio>
@@ -102,13 +101,13 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
                                                 {imageUrl?.isResponsive ? (
                                                     <Img 
                                                         className={'cld-responsive'}
-                                                        data-src={image.url.lastIndexOf('?') > -1 ? image.url.substring(0, image.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : image.url + cloudinary.CLD_TRACKING_PARAM}
+                                                        data-src={updateCloudinarySource(image.url)}
                                                     />
                                                 ) : (
                                                     <Img
-                                                        src={image.url.lastIndexOf('?') > -1 ? image.url.substring(0, image.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : image.url + cloudinary.CLD_TRACKING_PARAM}
-                                                        srcset={image?.srcset && updateTrackingParam(imageUrl?.srcset)}
-                                                        sizes={image?.sizes && imageUrl?.sizes}
+                                                        src={updateCloudinarySource(image.url)}
+                                                        srcset={image?.srcset && updateTrackingParam(image.srcset)}
+                                                        sizes={image?.sizes && image.sizes}
                                                     />
                                                 )}
                                             </AspectRatio>

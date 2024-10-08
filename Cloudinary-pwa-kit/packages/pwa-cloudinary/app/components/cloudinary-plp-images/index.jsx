@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { Img } from '@chakra-ui/react'
-import { cloudinary } from '../../../config/default'
-import { updateTrackingParam } from '../../utils/imageSrcset'
+import { updateTrackingParam, updateCloudinarySource } from '../../utils/imageSrcset'
 
 const CloudinaryPlpImage = ({ cloudinaryImage = {}, image = {} }) => {
     if (typeof window !== 'undefined' && cloudinaryImage.url) {
@@ -11,8 +10,8 @@ const CloudinaryPlpImage = ({ cloudinaryImage = {}, image = {} }) => {
             cloudinaryImage.url = replacedUrl
 
             if (cloudinaryImage?.isResponsive) {
-                window.cldObj = window.cldObj || window?.cloudinary?.default?.Cloudinary?.new({cloud_name: cloudinaryImage.cloudName || cloudinaryImage}); // eslint-disable-line no-undef
-                window?.cldObj?.responsive();
+                window.cldObj = window.cldObj || window?.cloudinary?.default.Cloudinary.new({cloud_name: cloudinaryImage.cloudName || cloudinaryImage})
+                window?.cldObj?.responsive()
             }
         }, [])
     }
@@ -22,14 +21,14 @@ const CloudinaryPlpImage = ({ cloudinaryImage = {}, image = {} }) => {
                 <Img 
                     className={'cld-responsive'}
                     alt={image?.alt}
-                    data-src={cloudinaryImage.url.lastIndexOf('?') > -1 ? cloudinaryImage.url.substring(0, cloudinaryImage.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : cloudinaryImage.url + cloudinary.CLD_TRACKING_PARAM}
+                    data-src={updateCloudinarySource(cloudinaryImage.url)}
                 />
             ) : (
                 <Img
-                    src={cloudinaryImage.url.lastIndexOf('?') > -1 ? cloudinaryImage.url.substring(0, cloudinaryImage.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : cloudinaryImage.url + cloudinary.CLD_TRACKING_PARAM}
+                    src={updateCloudinarySource(cloudinaryImage.url)}
                     alt={image?.alt}
-                    srcSet={cloudinaryImage.srcset && updateTrackingParam(cloudinaryImage.srcset)}
-                    sizes={cloudinaryImage?.sizes && cloudinaryImage?.sizes}
+                    srcSet={cloudinaryImage?.srcset && updateTrackingParam(cloudinaryImage.srcset)}
+                    sizes={cloudinaryImage?.sizes && cloudinaryImage.sizes}
                 />
             )}
         </>

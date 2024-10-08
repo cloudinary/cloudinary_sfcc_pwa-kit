@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { AspectRatio, Box, Image } from '@chakra-ui/react'
-import { cloudinary } from '../../../config/default'
-import { updateTrackingParam } from '../../utils/imageSrcset'
+import { updateTrackingParam, updateCloudinarySource } from '../../utils/imageSrcset'
 
 /**
  * The image gallery displays The Image Gallery Coming from Cloudinary in Product-Detail Page.
@@ -11,8 +10,8 @@ const CloudinaryLineItemImage = ({ cldProduct = {}, image = {}, cloudName }) => 
 
     useEffect(() => {
         if (cldProduct?.miniCartImage?.isResponsive || cldProduct?.isResponsive) {
-            window.cldObj = window.cldObj || window?.cloudinary?.default?.Cloudinary?.new({cloud_name: cloudName || cldProduct}); // eslint-disable-line no-undef
-            window?.cldObj?.responsive();
+            window.cldObj = window.cldObj || window?.cloudinary?.default.Cloudinary.new({cloud_name: cloudName || cldProduct})
+            window?.cldObj?.responsive()
         }
     }, [])
 
@@ -23,13 +22,13 @@ const CloudinaryLineItemImage = ({ cldProduct = {}, image = {}, cloudName }) => 
                     <AspectRatio ratio="1">
                         {cldProduct?.miniCartImage?.isResponsive ? (
                             <Image className={'cld-responsive'}
-                                data-src={cldProduct?.miniCartImage?.url.lastIndexOf('?') > -1 ? cldProduct?.miniCartImage?.url.substring(0, cldProduct?.miniCartImage?.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : cldProduct?.miniCartImage?.url + cloudinary.CLD_TRACKING_PARAM} alt={image && image.alt ? image.alt : null}
+                                data-src={updateCloudinarySource(cldProduct.miniCartImage.url)} alt={image && image.alt ? image.alt : null}
                             />
                         ) : (
                             <Image
-                                src={cldProduct?.miniCartImage?.url.lastIndexOf('?') > -1 ? cldProduct?.miniCartImage?.url.substring(0, cldProduct?.miniCartImage?.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : cldProduct?.miniCartImage?.url + cloudinary.CLD_TRACKING_PARAM} alt={image && image.alt ? image.alt : null}
-                                srcSet={cldProduct?.miniCartImage?.srcset && updateTrackingParam(cldProduct?.miniCartImage?.srcset)}
-                                sizes={cldProduct?.miniCartImage?.sizes && cldProduct?.miniCartImage?.sizes}
+                                src={updateCloudinarySource(cldProduct.miniCartImage.url)} alt={image && image.alt ? image.alt : null}
+                                srcSet={cldProduct?.miniCartImage?.srcset && updateTrackingParam(cldProduct.miniCartImage.srcset)}
+                                sizes={cldProduct?.miniCartImage?.sizes && cldProduct.miniCartImage.sizes}
                             />
                         )}
                     </AspectRatio>
@@ -42,12 +41,12 @@ const CloudinaryLineItemImage = ({ cldProduct = {}, image = {}, cloudName }) => 
                                 <Image
                                     className={'cld-responsive'}
                                     alt={image.alt}
-                                    data-src={cldProduct.url.lastIndexOf('?') > -1 ? cldProduct.url.substring(0, cldProduct.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : cldProduct.url + cloudinary.CLD_TRACKING_PARAM}
+                                    data-src={updateCloudinarySource(cldProduct.url)}
                                 />
                             ) : (
                                 <Image
                                     alt={image.alt}
-                                    src={cldProduct.url.lastIndexOf('?') > -1 ? cldProduct.url.substring(0, cldProduct.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : cldProduct.url + cloudinary.CLD_TRACKING_PARAM}
+                                    src={updateCloudinarySource(cldProduct.url)}
                                     srcset={cldProduct.srcset && updateTrackingParam(cldProduct.srcset)}
                                     sizes={cldProduct.sizes && cldProduct.sizes}
                                 />
