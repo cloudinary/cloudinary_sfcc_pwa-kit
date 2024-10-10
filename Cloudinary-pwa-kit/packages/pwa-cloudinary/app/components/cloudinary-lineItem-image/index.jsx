@@ -11,7 +11,7 @@ const CloudinaryLineItemImage = ({ cldProduct = {}, image = {}, cloudName }) => 
     useEffect(() => {
         if (cldProduct?.miniCartImage?.isResponsive || cldProduct?.isResponsive) {
             window.cldObj = window.cldObj || window.cloudinary.default.Cloudinary.new({cloud_name: cloudName || cldProduct})
-            window.cldObj.responsive()
+            window.cldObj?.responsive()
         }
     }, [])
 

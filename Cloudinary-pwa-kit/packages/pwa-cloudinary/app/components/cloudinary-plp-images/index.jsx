@@ -11,7 +11,7 @@ const CloudinaryPlpImage = ({ cloudinaryImage = {}, image = {} }) => {
 
             if (cloudinaryImage?.isResponsive) {
                 window.cldObj = window.cldObj || window.cloudinary.default.Cloudinary.new({cloud_name: cloudinaryImage.cloudName || cloudinaryImage})
-                window.cldObj.responsive()
+                window.cldObj?.responsive()
             }
         }, [])
     }

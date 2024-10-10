@@ -47,7 +47,7 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {} }) => {
     useEffect(() => {
         if (imageUrl?.isResponsive) {
             window.cldObj = window.cldObj || window.cloudinary.default.Cloudinary.new({cloud_name: cloudinaryImageGallery.cloudName || cloudinaryImageGallery})
-            window.cldObj.responsive()
+            window.cldObj?.responsive()
         }
     }, [imageUrl])
 
