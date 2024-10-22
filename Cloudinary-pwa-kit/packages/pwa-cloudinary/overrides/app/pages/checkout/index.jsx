@@ -22,6 +22,11 @@ import {useCurrentBasket} from '@salesforce/retail-react-app/app/hooks/use-curre
 import CheckoutSkeleton from '@salesforce/retail-react-app/app/pages/checkout/partials/checkout-skeleton'
 import {useUsid, useShopperOrdersMutation} from '@salesforce/commerce-sdk-react'
 
+{/** Cloudinary Custom Code Starts */}
+import Helmet from 'react-helmet'
+import { cloudinary } from '../../../../config/default'
+{/** Cloudinary Custom Code Ends */}
+
 const Checkout = () => {
     const {formatMessage} = useIntl()
     const navigate = useNavigation()
@@ -60,9 +65,28 @@ const Checkout = () => {
             setIsLoading(false)
         }
     }
+    
+    {/** Cloudinary Custom Code Starts */}
+    const cloudinaryCore = `https://unpkg.com/cloudinary-core@${cloudinary.versions.CLDCoreShrinkwrapJSURLVersion}/cloudinary-core-shrinkwrap.min.js`
+    const cloudinaryVideoPlayerJS = `https://unpkg.com/cloudinary-video-player@${cloudinary.versions.CLDVideoPlayerVersion}/dist/cld-video-player.min.js`
+    const cloudinaryVideoPlayerCSS = `https://unpkg.com/cloudinary-video-player@${cloudinary.versions.CLDVideoPlayerVersion}/dist/cld-video-player.min.css`
+    {/** Cloudinary Custom Code Ends */}
 
     return (
         <Box background="gray.50" flex="1">
+
+            {/** Cloudinary Custom Code Starts */}
+            <Helmet>
+                <script src={cloudinaryCore} />
+            </Helmet>
+            <Helmet>
+                <script src={cloudinaryVideoPlayerJS} />
+            </Helmet>
+            <Helmet>
+                <link rel="stylesheet" href={cloudinaryVideoPlayerCSS} />
+            </Helmet>
+            {/** Cloudinary Custom Code Ends */}
+
             <Container
                 data-testid="sf-checkout-container"
                 maxWidth="container.xl"
