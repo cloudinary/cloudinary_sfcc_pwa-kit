@@ -1,29 +1,42 @@
 import React, { useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { Img } from '@chakra-ui/react'
-import { cloudinary } from '../../../config/default'
-import { updateTrackingParam } from '../../utils/imageSrcset'
+import { updateTrackingParam, updateCloudinarySource } from '../../utils/imageSrcset'
 
 const CloudinaryPlpImage = ({ cloudinaryImage = {}, image = {} }) => {
     if (typeof window !== 'undefined' && cloudinaryImage.url) {
         useEffect(() => {
             const replacedUrl = cloudinaryImage.url.replace('w_auto,c_scale', 'w_auto,c_limit')
             cloudinaryImage.url = replacedUrl
+
+            if (cloudinaryImage?.isResponsive) {
+                window.cldObj = window.cldObj || window.cloudinary.default.Cloudinary.new({cloud_name: cloudinaryImage.cloudName || cloudinaryImage})
+                window.cldObj?.responsive()
+            }
         }, [])
     }
     return (
-        <Img className={cloudinaryImage?.isResponsive && 'cld-responsive'}
-            src={`${cloudinaryImage.url.lastIndexOf('?') > -1 ? cloudinaryImage.url.substring(0, cloudinaryImage.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : cloudinaryImage.url + cloudinary.CLD_TRACKING_PARAM}`}
-            alt={image?.alt}
-            srcset={!cloudinaryImage?.isResponsive && cloudinaryImage.srcset && updateTrackingParam(cloudinaryImage.srcset)}
-            sizes={!cloudinaryImage?.isResponsive && cloudinaryImage?.sizes}
-        />
+        <>
+            {cloudinaryImage?.isResponsive ? (
+                <Img 
+                    className={'cld-responsive'}
+                    alt={image.alt}
+                    data-src={updateCloudinarySource(cloudinaryImage.url)}
+                />
+            ) : (
+                <Img
+                    src={updateCloudinarySource(cloudinaryImage.url)}
+                    alt={image.alt}
+                    srcSet={cloudinaryImage.srcset && updateTrackingParam(cloudinaryImage.srcset)}
+                    sizes={cloudinaryImage.sizes && cloudinaryImage.sizes}
+                />
+            )}
+        </>
     )
 }
 
 CloudinaryPlpImage.propTypes = {
     cloudinaryImage: PropTypes.object,
-    dynamicImageProps: PropTypes.object,
     image: PropTypes.object
 }
 

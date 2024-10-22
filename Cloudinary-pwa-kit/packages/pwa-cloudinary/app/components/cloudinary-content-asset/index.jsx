@@ -19,6 +19,7 @@ const RenderContentAssets = ({ contentResult }) => {
                     }
                 }
             })
+            window?.cldObj?.responsive()
         }
     }, [])
     
