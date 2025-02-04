@@ -118,9 +118,9 @@ const Home = () => {
     return (
         <Box data-testid="home-page" layerStyle="page">
             <Seo
-                title="Home Page"
-                description="Commerce Cloud Retail React App"
-                keywords="Commerce Cloud, Retail React App, React Storefront"
+                title="Cloudinary Demo"
+                description="Cloudinary PWA Kit Demo eShop"
+                keywords="SFCC,B2C,Mobify,React,ReactJS,store,shop"
             />
 
             {/* Cloudinary Custom Code Starts */}
@@ -131,82 +131,6 @@ const Home = () => {
                 <RenderContentSlots slotResult={slotResult} />
             )}
             {/* Cloudinary Custom Code Ends */}
-
-            <Hero
-                title={intl.formatMessage({
-                    defaultMessage: 'The React PWA Starter Store for Retail',
-                    id: 'home.title.react_starter_store'
-                })}
-                img={{
-                    src: getAssetUrl('static/img/hero.png'),
-                    alt: 'npx pwa-kit-create-app'
-                }}
-                actions={
-                    <Stack spacing={{ base: 4, sm: 6 }} direction={{ base: 'column', sm: 'row' }}>
-                        <Button
-                            as={Link}
-                            href="https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/getting-started.html"
-                            target="_blank"
-                            width={{ base: 'full', md: 'inherit' }}
-                            paddingX={7}
-                            _hover={{ textDecoration: 'none' }}
-                        >
-                            <FormattedMessage
-                                defaultMessage="Get started"
-                                id="home.link.get_started"
-                            />
-                        </Button>
-                    </Stack>
-                }
-            />
-
-            <Section
-                background={'gray.50'}
-                marginX="auto"
-                paddingY={{ base: 8, md: 16 }}
-                paddingX={{ base: 4, md: 8 }}
-                borderRadius="base"
-                width={{ base: '100vw', md: 'inherit' }}
-                position={{ base: 'relative', md: 'inherit' }}
-                left={{ base: '50%', md: 'inherit' }}
-                right={{ base: '50%', md: 'inherit' }}
-                marginLeft={{ base: '-50vw', md: 'auto' }}
-                marginRight={{ base: '-50vw', md: 'auto' }}
-            >
-                <SimpleGrid
-                    columns={{ base: 1, md: 1, lg: 3 }}
-                    spacingX={{ base: 1, md: 4 }}
-                    spacingY={{ base: 4, md: 14 }}
-                >
-                    {heroFeatures.map((feature, index) => {
-                        const featureMessage = feature.message
-                        return (
-                            <Box
-                                key={index}
-                                background={'white'}
-                                boxShadow={'0px 2px 2px rgba(0, 0, 0, 0.1)'}
-                                borderRadius={'4px'}
-                            >
-                                <Link target="_blank" href={feature.href}>
-                                    <HStack>
-                                        <Flex
-                                            paddingLeft={6}
-                                            height={24}
-                                            align={'center'}
-                                            justify={'center'}
-                                        >
-                                            {feature.icon}
-                                        </Flex>
-                                        <Text fontWeight="700">
-                                            {intl.formatMessage(featureMessage.title)}
-                                        </Text>
-                                    </HStack>
-                                </Link>
-                            </Box>
-                        )
-                    })}
-                </SimpleGrid>
-            </Section>
 
             {productSearchResult && (
                 <Section
