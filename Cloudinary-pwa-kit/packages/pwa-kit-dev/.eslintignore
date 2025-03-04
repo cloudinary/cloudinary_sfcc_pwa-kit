@@ -1,7 +1,7 @@
+build
 coverage
-dist
 docs
-generator-assets
-vendor
-temp
-temp_static
+app/static
+jest.config.js
+webpack
+scripts/generator/assets
