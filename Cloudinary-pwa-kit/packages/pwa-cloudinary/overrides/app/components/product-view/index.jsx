@@ -542,7 +542,7 @@ const ProductView = forwardRef(
                                                     isFocusable={isFocusable}
                                                 >
                                                     {/** Cloudinary Custom Code Starts */}
-                                                    {product?.c_cloudinary?.cldSwatchs &&
+                                                    {product?.c_cloudinary?.cldSwatches &&
                                                         image ? (
                                                         <CloudinaryImageSwatches
                                                             cloudinaryImageGallery={product?.c_cloudinary ? product?.c_cloudinary : null}

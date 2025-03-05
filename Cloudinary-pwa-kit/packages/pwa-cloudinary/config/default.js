@@ -60,8 +60,8 @@ module.exports = {
         commerceAPI: {
             proxyPath: '/mobify/proxy/api',
             parameters: {
-                clientId: '{CLIENT_ID}',
-                organizationId: '{ORGANIZATION_ID}',
+                clientId: '6ba55594-b69a-42da-b17b-6cd85ede044f',
+                organizationId: 'f_ecom_zzgt_003',
                 shortCode: 'kv7kzm78',
                 siteId: 'RefArch'
             }
@@ -104,7 +104,7 @@ module.exports = {
                 path: 'api'
             },
             {
-                host: '{HOST_NAME}',
+                host: 'zzgt-003.dx.commercecloud.salesforce.com',
                 path: 'ocapi'
             }
         ]
@@ -112,11 +112,11 @@ module.exports = {
 
     cloudinary: {
         parameters: {
-            clientId: '{CLIENT_ID}',
-            organizationId: '{ORGANIZATION_ID}',
+            clientId: '6ba55594-b69a-42da-b17b-6cd85ede044f',
+            organizationId: 'f_ecom_zzgt_003',
             shortCode: 'kv7kzm78',
             siteId: 'RefArch',
-            host: '{HOST_NAME}',
+            host: 'zzgt-003.dx.commercecloud.salesforce.com',
             contentAssetId: 'home-main'
         },
         versions: {
