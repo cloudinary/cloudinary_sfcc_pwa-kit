@@ -135,9 +135,18 @@ export const AddToCartModal = () => {
                                 >
                                     <Flex gridGap="4">
                                         <Box w="24" flex="none">
+                                        {/** Cloudinary Custom Code Starts */}
+                                        {product && product.c_cloudinary && product.c_cloudinary.miniCartEnabled ? (
+                                            <CloudinaryLineItemImage
+                                                cldProduct={product.c_cloudinary}
+                                                image={bundleImage}
+                                            />
+                                        ) : (
                                             <AspectRatio ratio="1">
                                                 <img src={bundleImage.link} alt={bundleImage.alt} />
                                             </AspectRatio>
+                                        )}
+                                        {/** Cloudinary Custom Code Ends */}
                                         </Box>
 
                                         <Box>
