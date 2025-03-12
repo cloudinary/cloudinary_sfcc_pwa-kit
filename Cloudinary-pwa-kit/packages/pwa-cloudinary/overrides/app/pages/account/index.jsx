@@ -22,7 +22,7 @@ import {
     Stack,
     Text,
     Divider
-} from '@chakra-ui/react'
+} from '@salesforce/retail-react-app/app/components/shared/ui'
 import Seo from '@salesforce/retail-react-app/app/components/seo'
 import Link from '@salesforce/retail-react-app/app/components/link'
 import {
@@ -64,7 +64,7 @@ const LogoutButton = ({onClick}) => {
                 height={11}
             >
                 <Flex justify={{base: 'center', lg: 'flex-start'}}>
-                    <SignoutIcon boxSize={5} mr={2} />
+                    <SignoutIcon boxSize={5} mr={2} aria-hidden={true} />
                     <Text as="span" fontSize={['md', 'md', 'md', 'sm']} fontWeight="normal">
                         {formatMessage({
                             defaultMessage: 'Log Out',
@@ -110,11 +110,11 @@ const Account = () => {
     // If we have customer data and they are not registered, push to login page
     // Using Redirect allows us to store the directed page to location
     // so we can direct users back after they are successfully log in
-    // we don't want redirect on server side
     if (customerType !== null && !isRegistered && onClient) {
         const path = buildUrl('/login')
         return <Redirect to={{pathname: path, state: {directedFrom: '/account'}}} />
     }
+
     return (
         <Box
             data-testid={isRegistered && isHydrated() ? 'account-page' : 'account-page-skeleton'}
@@ -137,40 +137,53 @@ const Account = () => {
                                 <AccordionButton
                                     as={Button}
                                     height={16}
+                                    paddingLeft={8}
                                     variant="ghost"
                                     color="black"
                                     _active={{background: 'gray.100'}}
                                     _expanded={{background: 'transparent'}}
                                 >
                                     <Flex align="center" justify="center">
-                                        <Text as="span" mr={2}>
+                                        <Heading as="h2" fontSize="16px">
                                             <FormattedMessage
                                                 defaultMessage="My Account"
                                                 id="account.accordion.button.my_account"
                                             />
-                                        </Text>
+                                        </Heading>
                                         {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
                                     </Flex>
                                 </AccordionButton>
                                 <AccordionPanel px={4} paddingBottom={4}>
                                     <Flex as="nav" spacing={0} direction="column">
-                                        {navLinks.map((link) => (
-                                            <Button
-                                                key={link.name}
-                                                as={Link}
-                                                to={`/account${link.path}`}
-                                                useNavLink={true}
-                                                variant="menu-link-mobile"
-                                                justifyContent="center"
-                                                fontSize="md"
-                                                fontWeight="normal"
-                                                onClick={() => setMobileNavIndex(-1)}
-                                            >
-                                                {formatMessage(messages[link.name])}
-                                            </Button>
-                                        ))}
+                                        <Stack spacing={0} as="ul" data-testid="account-nav">
+                                            {navLinks.map((link) => (
+                                                <Box
+                                                    align="center"
+                                                    key={link.name}
+                                                    as="li"
+                                                    listStyleType="none"
+                                                >
+                                                    <Button
+                                                        as={Link}
+                                                        to={`/account${link.path}`}
+                                                        useNavLink={true}
+                                                        variant="menu-link-mobile"
+                                                        justifyContent="center"
+                                                        fontSize="md"
+                                                        fontWeight="normal"
+                                                        width="100%"
+                                                        onClick={() => setMobileNavIndex(-1)}
+                                                    >
+                                                        {formatMessage(messages[link.name])}
+                                                    </Button>
+                                                </Box>
+                                            ))}
 
-                                        <LogoutButton justify="center" onClick={onSignoutClick} />
+                                            <LogoutButton
+                                                justify="center"
+                                                onClick={onSignoutClick}
+                                            />
+                                        </Stack>
                                     </Flex>
                                 </AccordionPanel>
                             </>
@@ -182,7 +195,7 @@ const Account = () => {
                 <Stack display={{base: 'none', lg: 'flex'}} spacing={4}>
                     {showLoading && <LoadingSpinner wrapperStyles={{height: '100vh'}} />}
 
-                    <Heading as="h6" fontSize="18px">
+                    <Heading as="h2" fontSize="18px">
                         <FormattedMessage
                             defaultMessage="My Account"
                             id="account.heading.my_account"

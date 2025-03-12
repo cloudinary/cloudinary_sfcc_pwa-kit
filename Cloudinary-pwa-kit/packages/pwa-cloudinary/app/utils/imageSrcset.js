@@ -18,17 +18,3 @@ export const updateTrackingParam = (srcset) => {
 
     return newSrcset.join(' ')
 }
-
-/**
- * Upate the tracking params in url
- *
- * @param {string} url - url.
- * @returns {string} - The ImageGroup matching the search criteria
- */
-export const updateCloudinarySource = (url) => {
-    if (url.lastIndexOf('?') > -1) {
-        return url.substring(0, url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM
-    } else {
-        return url + cloudinary.CLD_TRACKING_PARAM
-    }
-}

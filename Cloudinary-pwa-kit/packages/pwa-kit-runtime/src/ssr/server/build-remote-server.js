@@ -12,7 +12,8 @@ import {
     SET_COOKIE,
     CACHE_CONTROL,
     NO_CACHE,
-    SLAS_CUSTOM_PROXY_PATH
+    X_ENCODED_HEADERS,
+    CONTENT_SECURITY_POLICY
 } from './constants'
 import {
     catchAndLog,
@@ -31,7 +32,7 @@ import express from 'express'
 import {PersistentCache} from '../../utils/ssr-cache'
 import merge from 'merge-descriptors'
 import URL from 'url'
-import {Headers, X_HEADERS_TO_REMOVE, X_MOBIFY_REQUEST_CLASS} from '../../utils/ssr-proxying'
+import {Headers, X_HEADERS_TO_REMOVE_ORIGIN, X_MOBIFY_REQUEST_CLASS} from '../../utils/ssr-proxying'
 import assert from 'assert'
 import semver from 'semver'
 import pkg from '../../../package.json'
@@ -40,10 +41,16 @@ import {RESOLVED_PROMISE} from './express'
 import http from 'http'
 import https from 'https'
 import {proxyConfigs, updatePackageMobify} from '../../utils/ssr-shared'
+import {
+    proxyBasePath,
+    bundleBasePath,
+    healthCheckPath,
+    slasPrivateProxyPath
+} from '../../utils/ssr-namespace-paths'
 import {applyProxyRequestHeaders} from '../../utils/ssr-server/configure-proxy'
 import awsServerlessExpress from 'aws-serverless-express'
 import expressLogging from 'morgan'
-import {morganStream} from '../../utils/morgan-stream'
+import logger from '../../utils/logger-instance'
 import {createProxyMiddleware} from 'http-proxy-middleware'
 
 /**
@@ -126,9 +133,10 @@ export const RemoteServerFactory = {
 
             // A regex for identifying which SLAS endpoints the custom SLAS private
             // client secret handler will inject an Authorization header.
-            // Do not modify unless a project wants to customize additional SLAS
-            // endpoints that we currently do not support (ie. /oauth2/passwordless/token)
-            applySLASPrivateClientToEndpoints: /\/oauth2\/token/
+            // To allow additional SLAS endpoints, users can override this value in
+            // their project's ssr.js.
+            applySLASPrivateClientToEndpoints:
+                /\/oauth2\/(token|passwordless\/(login|token)|password\/(reset|action))/
         }
 
         options = Object.assign({}, defaults, options)
@@ -208,6 +216,13 @@ export const RemoteServerFactory = {
     /**
      * @private
      */
+    _isBundleOrProxyPath(url) {
+        return url.startsWith(proxyBasePath) || url.startsWith(bundleBasePath)
+    },
+
+    /**
+     * @private
+     */
     _getSlasEndpoint(options) {
         if (!options.useSLASPrivateClient) return undefined
         const shortCode = options.mobify?.app?.commerceAPI?.parameters?.shortCode
@@ -227,42 +242,67 @@ export const RemoteServerFactory = {
      */
 
     _setupLogging(app) {
+        const morganLoggerFormat = function (tokens, req, res) {
+            const contentLength = tokens.res(req, res, 'content-length')
+            return [
+                `(${res.locals.requestId})`,
+                tokens.method(req, res),
+                tokens.url(req, res),
+                tokens.status(req, res),
+                tokens['response-time'](req, res),
+                'ms',
+                contentLength && `- ${contentLength}`
+            ].join(' ')
+        }
+
+        // Morgan stream for logging status codes less than 400
         app.use(
-            expressLogging(
-                function (tokens, req, res) {
-                    const contentLength = tokens.res(req, res, 'content-length')
-                    return [
-                        `(${res.locals.requestId})`,
-                        tokens.method(req, res),
-                        tokens.url(req, res),
-                        tokens.status(req, res),
-                        tokens['response-time'](req, res),
-                        'ms',
-                        contentLength && `- ${contentLength}`
-                    ].join(' ')
+            expressLogging(morganLoggerFormat, {
+                skip: function (req, res) {
+                    return res.statusCode >= 400
                 },
-                {
-                    stream: morganStream
+                stream: {
+                    write: (message) => {
+                        logger.info(message, {
+                            namespace: 'httprequest'
+                        })
+                    }
                 }
-            )
+            })
+        )
+
+        // Morgan stream for logging status codes 400 and above
+        app.use(
+            expressLogging(morganLoggerFormat, {
+                skip: function (req, res) {
+                    return res.statusCode < 400
+                },
+                stream: {
+                    write: (message) => {
+                        logger.error(message, {
+                            namespace: 'httprequest'
+                        })
+                    }
+                }
+            })
         )
     },
 
     /**
-     * Passing the requestId from apiGateway event to locals
+     * Passing the correlation Id from MRT to locals
      * @private
      */
     _setRequestId(app) {
         app.use((req, res, next) => {
-            if (!req.headers['x-apigateway-event']) {
-                console.error('Missing x-apigateway-event')
+            const correlationId = req.headers['x-correlation-id']
+            const requestId = correlationId ? correlationId : req.headers['x-apigateway-event']
+            if (!requestId) {
+                logger.error('Both x-correlation-id and x-apigateway-event headers are missing', {
+                    namespace: '_setRequestId'
+                })
                 next()
                 return
             }
-            const apiGatewayEvent = JSON.parse(
-                decodeURIComponent(req.headers['x-apigateway-event'])
-            )
-            const {requestId} = apiGatewayEvent.requestContext
             res.locals.requestId = requestId
             next()
         })
@@ -319,6 +359,7 @@ export const RemoteServerFactory = {
         // want request-processors applied to development views.
         this._addSDKInternalHandlers(app)
         this._setupSSRRequestProcessorMiddleware(app)
+        this._setForwardedHeaders(app, options)
 
         this._setupLogging(app)
         this._setupMetricsFlushing(app)
@@ -408,6 +449,23 @@ export const RemoteServerFactory = {
     },
 
     /**
+     * Set x-forward-* headers into locals, this is primarily used to facilitate react sdk hook `useOrigin`
+     * @private
+     */
+    _setForwardedHeaders(app, options) {
+        app.use((req, res, next) => {
+            const xForwardedHost = req.headers?.['x-forwarded-host']
+            const xForwardedProto = req.headers?.['x-forwarded-proto']
+            if (xForwardedHost) {
+                // prettier-ignore
+                res.locals.xForwardedOrigin = `${xForwardedProto || options.protocol}://${xForwardedHost}`
+            }
+
+            next()
+        })
+    },
+
+    /**
      * @private
      */
     _setupSSRRequestProcessorMiddleware(app) {
@@ -432,22 +490,8 @@ export const RemoteServerFactory = {
         const processIncomingRequest = (req, res) => {
             const options = req.app.options
             // If the request is for a proxy or bundle path, do nothing
-            if (req.originalUrl.startsWith('/mobify/')) {
+            if (this._isBundleOrProxyPath(req.originalUrl)) {
                 return
-            }
-
-            // If the request has an X-Amz-Cf-Id header, log it now
-            // to make it easier to associated CloudFront requests
-            // with Lambda log entries. Generally we avoid logging
-            // because it increases the volume of log data, but this
-            // is important for log analysis.
-            const cloudfrontId = req.headers['x-amz-cf-id']
-            if (cloudfrontId) {
-                // Log the Express app request id plus the cloudfront
-                // x-edge-request-id value. The resulting line in the logs
-                // will automatically include the lambda RequestId, so
-                // one line links all ids.
-                console.log(`Req ${res.locals.requestId} for x-edge-request-id ${cloudfrontId}`)
             }
 
             // Apply the request processor
@@ -569,7 +613,7 @@ export const RemoteServerFactory = {
                     // different types of the 'req' object, and will
                     // always contain the original full path.
                     /* istanbul ignore else */
-                    if (!req.originalUrl.startsWith('/mobify/')) {
+                    if (!this._isBundleOrProxyPath(req.originalUrl)) {
                         req.app.sendMetric(
                             'RequestTime',
                             Date.now() - locals.requestStart,
@@ -599,7 +643,7 @@ export const RemoteServerFactory = {
             // do that now so that the rest of the code don't have to deal
             // with these headers, which can be large and may be accidentally
             // forwarded to other servers.
-            X_HEADERS_TO_REMOVE.forEach((key) => {
+            X_HEADERS_TO_REMOVE_ORIGIN.forEach((key) => {
                 delete req.headers[key]
             })
 
@@ -615,7 +659,7 @@ export const RemoteServerFactory = {
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _setupProxying(app, options) {
-        app.all('/mobify/proxy/*', (_, res) => {
+        app.all(`${proxyBasePath}/*`, (_, res) => {
             return res.status(501).json({
                 message:
                     'Environment proxies are not set: https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/proxying-requests.html'
@@ -627,7 +671,7 @@ export const RemoteServerFactory = {
      * @private
      */
     _handleMissingSlasPrivateEnvVar(app) {
-        app.use(SLAS_CUSTOM_PROXY_PATH, (_, res) => {
+        app.use(slasPrivateProxyPath, (_, res) => {
             return res.status(501).json({
                 message:
                     'Environment variable PWA_KIT_SLAS_CLIENT_SECRET not set: Please set this environment variable to proceed.'
@@ -642,41 +686,73 @@ export const RemoteServerFactory = {
         if (!options.useSLASPrivateClient) {
             return
         }
-        localDevLog(`Proxying ${SLAS_CUSTOM_PROXY_PATH} to ${options.slasTarget}`)
+
+        localDevLog(`Proxying ${slasPrivateProxyPath} to ${options.slasTarget}`)
 
         const clientId = options.mobify?.app?.commerceAPI?.parameters?.clientId
         const clientSecret = process.env.PWA_KIT_SLAS_CLIENT_SECRET
         if (!clientSecret) {
-            this._handleMissingSlasPrivateEnvVar(app)
+            this._handleMissingSlasPrivateEnvVar(app, slasPrivateProxyPath)
             return
         }
 
         const encodedSlasCredentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
 
         app.use(
-            SLAS_CUSTOM_PROXY_PATH,
+            slasPrivateProxyPath,
             createProxyMiddleware({
                 target: options.slasTarget,
                 changeOrigin: true,
-                pathRewrite: {[SLAS_CUSTOM_PROXY_PATH]: ''},
+                pathRewrite: {[slasPrivateProxyPath]: ''},
                 onProxyReq: (proxyRequest, incomingRequest) => {
                     applyProxyRequestHeaders({
                         proxyRequest,
                         incomingRequest,
-                        proxyPath: SLAS_CUSTOM_PROXY_PATH,
+                        proxyPath: slasPrivateProxyPath,
                         targetHost: options.slasHostName,
                         targetProtocol: 'https'
                     })
 
                     // We pattern match and add client secrets only to endpoints that
-                    // match the regex specified by options.applySLASPrivateClientToEndpoints.
-                    // By default, this regex matches only calls to SLAS /oauth2/token
+                    // match the regex specified by options.applySLASPrivateClientToEndpoints
                     // (see option defaults at the top of this file).
                     // Other SLAS endpoints, ie. SLAS authenticate (/oauth2/login) and
                     // SLAS logout (/oauth2/logout), use the Authorization header for a different
                     // purpose so we don't want to overwrite the header for those calls.
                     if (incomingRequest.path?.match(options.applySLASPrivateClientToEndpoints)) {
                         proxyRequest.setHeader('Authorization', `Basic ${encodedSlasCredentials}`)
+                    }
+
+                    // /oauth2/trusted-agent/token endpoint requires a different auth header
+                    if (incomingRequest.path?.match(/\/oauth2\/trusted-agent\/token/)) {
+                        proxyRequest.setHeader('_sfdc_client_auth', encodedSlasCredentials)
+                    }
+                },
+                onProxyRes: (proxyRes, req) => {
+                    if (proxyRes.statusCode && proxyRes.statusCode >= 400) {
+                        logger.error(
+                            `Failed to proxy SLAS Private Client request - ${proxyRes.statusCode}`,
+                            {
+                                namespace: '_setupSlasPrivateClientProxy',
+                                additionalProperties: {statusCode: proxyRes.statusCode}
+                            }
+                        )
+                        logger.error(
+                            `Please make sure you have enabled the SLAS Private Client Proxy in your ssr.js and set the correct environment variable PWA_KIT_SLAS_CLIENT_SECRET.`,
+                            {namespace: '_setupSlasPrivateClientProxy'}
+                        )
+                        logger.error(
+                            `SLAS Private Client Proxy Request URL - ${req.protocol}://${req.get(
+                                'host'
+                            )}${req.originalUrl}`,
+                            {
+                                namespace: '_setupSlasPrivateClientProxy',
+                                additionalProperties: {
+                                    protocol: req.protocol,
+                                    originalUrl: req.originalUrl
+                                }
+                            }
+                        )
                     }
                 }
             })
@@ -687,7 +763,7 @@ export const RemoteServerFactory = {
      * @private
      */
     _setupHealthcheck(app) {
-        app.get('/mobify/ping', (_, res) =>
+        app.get(`${healthCheckPath}`, (_, res) =>
             res.set('cache-control', NO_CACHE).sendStatus(200).end()
         )
     },
@@ -702,6 +778,10 @@ export const RemoteServerFactory = {
         // to add in their projects, like in any regular Express app.
         app.use(ssrMiddleware)
         app.use(errorHandlerMiddleware)
+
+        if (options?.encodeNonAsciiHttpHeaders) {
+            app.use(encodeNonAsciiMiddleware)
+        }
 
         applyPatches(options)
     },
@@ -832,8 +912,27 @@ export const RemoteServerFactory = {
 
         const content = fs.readFileSync(workerFilePath, {encoding: 'utf8'})
 
+        // If the service worker is not updated when content security policy headers inside
+        // ssr.js are changed, then service worker initiated requests will continue to use
+        // the old CSP headers.
+        //
+        // This is problematic in stacked CDN setups where an old service worker with
+        // old CSPs can remain cached if the content of the service worker itself is not changed.
+        //
+        // To ensure the service worker is refetched when CSPs are changed, we factor in
+        // the CSP headers when generating the Etag.
+        //
+        // See https://gus.lightning.force.com/lightning/r/ADM_Work__c/a07EE000025yeu9YAA/view
+        // and https://salesforce-internal.slack.com/archives/C01GLHLBPT5/p1730739370922629
+        // for more details.
+
+        const contentSecurityPolicyHeader = res.getHeaders()[CONTENT_SECURITY_POLICY] || ''
+
         // Serve the file, with a strong ETag
-        res.set('etag', getHashForString(content))
+        // For this to be a valid ETag, the string must be placed between  ""
+        // See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag#etag_value for
+        // more details
+        res.set('etag', `"${getHashForString(content + contentSecurityPolicyHeader)}"`)
         res.set(CONTENT_TYPE, 'application/javascript')
         res.send(content)
     },
@@ -899,7 +998,7 @@ export const RemoteServerFactory = {
      * @param app {Express} - an Express App
      * @private
      */
-    _createHandler(app) {
+    _createHandler(app, options) {
         // This flag is initially false, and is set true on the first request
         // handled by a Lambda. If it is true on entry to the handler function,
         // it indicates that the Lambda container has been reused.
@@ -908,6 +1007,24 @@ export const RemoteServerFactory = {
         const server = awsServerlessExpress.createServer(app, null, binaryMimeTypes)
 
         const handler = (event, context, callback) => {
+            // encode non ASCII request headers
+            if (options?.encodeNonAsciiHttpHeaders) {
+                Object.keys(event.headers).forEach((key) => {
+                    if (!isASCII(event.headers[key])) {
+                        event.headers[key] = encodeURIComponent(event.headers[key])
+                        // x-encoded-headers keeps track of which headers have been modified and encoded
+                        if (event.headers[X_ENCODED_HEADERS]) {
+                            // append header key
+                            event.headers[
+                                X_ENCODED_HEADERS
+                            ] = `${event.headers[X_ENCODED_HEADERS]},${key}`
+                        } else {
+                            event.headers[X_ENCODED_HEADERS] = key
+                        }
+                    }
+                })
+            }
+
             // We don't want to wait for an empty event loop once the response
             // has been sent. Setting this to false will "send the response
             // right away when the callback executes", but any pending events
@@ -966,7 +1083,7 @@ export const RemoteServerFactory = {
                             ._waitForResponses()
                             .then(() => app.metrics.flush())
                             // Now call the Lambda callback to complete the response
-                            .then(() => callback(err, processLambdaResponse(response)))
+                            .then(() => callback(err, processLambdaResponse(response, event)))
                         // DON'T add any then() handlers here, after the callback.
                         // They won't be called after the response is sent, but they
                         // *might* be called if the Lambda container running this code
@@ -1010,8 +1127,8 @@ export const RemoteServerFactory = {
     createHandler(options, customizeApp) {
         process.on('unhandledRejection', catchAndLog)
         const app = this._createApp(options)
-        customizeApp(app)
-        return this._createHandler(app)
+        customizeApp(app, options)
+        return this._createHandler(app, options)
     },
 
     /**
@@ -1054,10 +1171,13 @@ const prepNonProxyRequest = (req, res, next) => {
             if (header && header.toLowerCase() !== SET_COOKIE && value) {
                 setHeader.call(this, header, value)
             } /* istanbul ignore else */ else if (!remote) {
-                console.warn(
+                logger.warn(
                     `Req ${res.locals.requestId}: ` +
                         `Cookies cannot be set on responses sent from ` +
-                        `the SSR Server. Discarding "Set-Cookie: ${value}"`
+                        `the SSR Server. Discarding "Set-Cookie: ${value}"`,
+                    {
+                        namespace: 'RemoteServerFactory.prepNonProxyRequest'
+                    }
                 )
             }
         }
@@ -1098,6 +1218,40 @@ const errorHandlerMiddleware = (err, req, res, next) => {
     catchAndLog(err)
     req.app.sendMetric('RenderErrors')
     res.sendStatus(500)
+}
+
+/**
+ * Helper function that checks if a string is composed of ASCII characters
+ * We only check printable ASCII characters and not special ASCII characters
+ * such as NULL
+ *
+ * @private
+ */
+const isASCII = (str) => {
+    return /^[\x20-\x7E]*$/.test(str)
+}
+
+/**
+ * Express Middleware applied to responses that encode any non ASCII headers
+ *
+ * @private
+ */
+const encodeNonAsciiMiddleware = (req, res, next) => {
+    const originalSetHeader = res.setHeader
+
+    res.setHeader = function (key, value) {
+        if (!isASCII(value)) {
+            originalSetHeader.call(this, key, encodeURIComponent(value))
+
+            let encodedHeaders = res.getHeader(X_ENCODED_HEADERS)
+            encodedHeaders = encodedHeaders ? `${encodedHeaders},${key}` : key
+            originalSetHeader.call(this, X_ENCODED_HEADERS, encodedHeaders)
+        } else {
+            originalSetHeader.call(this, key, value)
+        }
+    }
+
+    next()
 }
 
 /**

@@ -29,11 +29,7 @@ import OrderSummary from '@salesforce/retail-react-app/app/components/order-summ
 import {useCurrentCustomer} from '@salesforce/retail-react-app/app/hooks/use-current-customer'
 import {useCurrentBasket} from '@salesforce/retail-react-app/app/hooks/use-current-basket'
 import CheckoutSkeleton from '@salesforce/retail-react-app/app/pages/checkout/partials/checkout-skeleton'
-import {
-    useUsid,
-    useShopperOrdersMutation,
-    useShopperBasketsMutation
-} from '@salesforce/commerce-sdk-react'
+import {useShopperOrdersMutation, useShopperBasketsMutation} from '@salesforce/commerce-sdk-react'
 import UnavailableProductConfirmationModal from '@salesforce/retail-react-app/app/components/unavailable-product-confirmation-modal'
 import {
     API_ERROR_MESSAGE,
@@ -41,16 +37,20 @@ import {
 } from '@salesforce/retail-react-app/app/constants'
 import {useToast} from '@salesforce/retail-react-app/app/hooks/use-toast'
 import LoadingSpinner from '@salesforce/retail-react-app/app/components/loading-spinner'
+import {getConfig} from '@salesforce/pwa-kit-runtime/utils/ssr-config'
 
 const Checkout = () => {
     const {formatMessage} = useIntl()
     const navigate = useNavigation()
-    const {usid} = useUsid()
     const {step} = useCheckout()
     const [error, setError] = useState()
     const {data: basket} = useCurrentBasket()
     const [isLoading, setIsLoading] = useState(false)
     const {mutateAsync: createOrder} = useShopperOrdersMutation('createOrder')
+    const {passwordless = {}, social = {}} = getConfig().app.login || {}
+    const idps = social?.idps
+    const isSocialEnabled = !!social?.enabled
+    const isPasswordlessEnabled = !!passwordless?.enabled
 
     useEffect(() => {
         if (error || step === 4) {
@@ -62,11 +62,6 @@ const Checkout = () => {
         setIsLoading(true)
         try {
             const order = await createOrder({
-                // We send the SLAS usid via this header. This is required by ECOM to map
-                // Einstein events sent via the API with the finishOrder event fired by ECOM
-                // when an Order transitions from Created to New status.
-                // Without this, various order conversion metrics will not appear on reports and dashboards
-                headers: {_sfdc_customer_id: usid},
                 body: {basketId: basket.basketId}
             })
             navigate(`/checkout/confirmation/${order.orderNo}`)
@@ -99,7 +94,11 @@ const Checkout = () => {
                                 </Alert>
                             )}
 
-                            <ContactInfo />
+                            <ContactInfo
+                                isSocialEnabled={isSocialEnabled}
+                                isPasswordlessEnabled={isPasswordlessEnabled}
+                                idps={idps}
+                            />
                             <ShippingAddress />
                             <ShippingOptions />
                             <Payment />
@@ -175,7 +174,6 @@ const CheckoutContainer = () => {
     const {data: customer} = useCurrentCustomer()
     const {data: basket} = useCurrentBasket()
     const {formatMessage} = useIntl()
-    const productIds = basket?.productItems?.map(({productId}) => productId) ?? []
     const removeItemFromBasketMutation = useShopperBasketsMutation('removeItemFromBasket')
     const toast = useToast()
     const [isDeletingUnavailableItem, setIsDeletingUnavailableItem] = useState(false)
@@ -222,7 +220,7 @@ const CheckoutContainer = () => {
 
             <Checkout />
             <UnavailableProductConfirmationModal
-                productIds={productIds}
+                productItems={basket?.productItems}
                 handleUnavailableProducts={handleUnavailableProducts}
             />
         </CheckoutProvider>

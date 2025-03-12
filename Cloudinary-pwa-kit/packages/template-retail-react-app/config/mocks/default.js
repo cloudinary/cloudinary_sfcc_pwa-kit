@@ -19,6 +19,16 @@ module.exports = {
             site: 'path',
             showDefaults: true
         },
+        login: {
+            passwordless: {
+                enabled: false,
+                callbackURI: 'https://webhook.site/27761b71-50c1-4097-a600-21a3b89a546c'
+            },
+            social: {
+                enabled: false,
+                idps: ['google', 'apple']
+            }
+        },
         siteAliases: {
             'site-1': 'uk',
             'site-2': 'us'
@@ -107,7 +117,7 @@ module.exports = {
     ],
     // Additional parameters that configure Express app behavior.
     ssrParameters: {
-        ssrFunctionNodeVersion: '18.x',
+        ssrFunctionNodeVersion: '22.x',
         proxyConfigs: [
             {
                 host: 'localhost:8888',
@@ -118,14 +128,5 @@ module.exports = {
                 path: 'ocapi'
             }
         ]
-    },
-    mockFetchOCAPISessions: (url) => {
-        if (url.includes('/sessions')) {
-            return {
-                ok: true,
-                status: 200
-            }
-        }
-        throw new Error(`Unhandled request: ${url}`)
     }
 }

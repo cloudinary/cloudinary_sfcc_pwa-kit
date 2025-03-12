@@ -20,7 +20,7 @@ import {
     createStylesContext,
     Button,
     FormControl
-} from '@chakra-ui/react'
+} from '@salesforce/retail-react-app/app/components/shared/ui'
 import { useIntl } from 'react-intl'
 
 import LinksList from '@salesforce/retail-react-app/app/components/links-list'
@@ -30,11 +30,12 @@ import { getPathWithLocale } from '@salesforce/retail-react-app/app/utils/url'
 import LocaleText from '@salesforce/retail-react-app/app/components/locale-text'
 import useMultiSite from '@salesforce/retail-react-app/app/hooks/use-multi-site'
 import styled from '@emotion/styled'
+import { STORE_LOCATOR_IS_ENABLED } from '@salesforce/retail-react-app/app/constants'
 
-{/** Cloudinary Custom Code Starts */}
+{/** Cloudinary Custom Code Starts */ }
 import Helmet from 'react-helmet'
 import { cloudinary } from '../../../../config/default'
-{/** Cloudinary Custom Code Ends */}
+{/** Cloudinary Custom Code Ends */ }
 
 const [StylesProvider, useStyles] = createStylesContext('Footer')
 const Footer = ({ ...otherProps }) => {
@@ -45,9 +46,12 @@ const Footer = ({ ...otherProps }) => {
     const { l10n } = site
     const supportedLocaleIds = l10n?.supportedLocales.map((locale) => locale.id)
     const showLocaleSelector = supportedLocaleIds?.length > 1
+    {/** Cloudinary Custom Code Starts */ }
     const cloudinaryCore = `https://unpkg.com/cloudinary-core@${cloudinary.versions.CLDCoreShrinkwrapJSURLVersion}/cloudinary-core-shrinkwrap.min.js`
     const cloudinaryVideoPlayerJS = `https://unpkg.com/cloudinary-video-player@${cloudinary.versions.CLDVideoPlayerVersion}/dist/cld-video-player.min.js`
     const cloudinaryVideoPlayerCSS = `https://unpkg.com/cloudinary-video-player@${cloudinary.versions.CLDVideoPlayerVersion}/dist/cld-video-player.min.css`
+    {/** Cloudinary Custom Code Ends */ }
+
     // NOTE: this is a workaround to fix hydration error, by making sure that the `option.selected` property is set.
     // For some reason, adding some styles prop (to the option element) prevented `selected` from being set.
     // So now we add the styling to the parent element instead.
@@ -55,6 +59,25 @@ const Footer = ({ ...otherProps }) => {
         // Targeting the child element
         option: styles.localeDropdownOption
     })
+    const makeOurCompanyLinks = () => {
+        const links = []
+        if (STORE_LOCATOR_IS_ENABLED)
+            links.push({
+                href: '/store-locator',
+                text: intl.formatMessage({
+                    id: 'footer.link.store_locator',
+                    defaultMessage: 'Store Locator'
+                })
+            })
+        links.push({
+            href: '/',
+            text: intl.formatMessage({
+                id: 'footer.link.about_us',
+                defaultMessage: 'About Us'
+            })
+        })
+        return links
+    }
 
     return (
         <Box as="footer" {...styles.container} {...otherProps}>
@@ -70,7 +93,7 @@ const Footer = ({ ...otherProps }) => {
             </Helmet>
             {/** Cloudinary Custom Code Ends */}
 
-            <Box {...styles.content}>
+            <Box {...styles.content} as="section">
                 <StylesProvider value={styles}>
                     <HideOnMobile>
                         <SimpleGrid columns={4} spacing={3}>
@@ -123,22 +146,7 @@ const Footer = ({ ...otherProps }) => {
                                     id: 'footer.column.our_company',
                                     defaultMessage: 'Our Company'
                                 })}
-                                links={[
-                                    {
-                                        href: '/',
-                                        text: intl.formatMessage({
-                                            id: 'footer.link.store_locator',
-                                            defaultMessage: 'Store Locator'
-                                        })
-                                    },
-                                    {
-                                        href: '/',
-                                        text: intl.formatMessage({
-                                            id: 'footer.link.about_us',
-                                            defaultMessage: 'About Us'
-                                        })
-                                    }
-                                ]}
+                                links={makeOurCompanyLinks()}
                             />
                             <Box>
                                 <Subscribe />
@@ -215,7 +223,7 @@ const Subscribe = ({ ...otherProps }) => {
     const intl = useIntl()
     return (
         <Box {...styles.subscribe} {...otherProps}>
-            <Heading {...styles.subscribeHeading}>
+            <Heading as="h1" {...styles.subscribeHeading}>
                 {intl.formatMessage({
                     id: 'footer.subscribe.heading.first_to_know',
                     defaultMessage: 'Be the first to know'
@@ -230,7 +238,7 @@ const Subscribe = ({ ...otherProps }) => {
 
             <Box>
                 <InputGroup>
-                    {/* Had to swap the following InputRightElement and Input 
+                    {/* Had to swap the following InputRightElement and Input
                         to avoid the hydration error due to mismatched html between server and client side.
                         This is a workaround for Lastpass plugin that automatically injects its icon for input fields.
                     */}

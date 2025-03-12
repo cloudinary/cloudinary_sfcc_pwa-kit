@@ -20,7 +20,14 @@ import {getConfig} from '@salesforce/pwa-kit-runtime/utils/ssr-config'
 import {Skeleton} from '@salesforce/retail-react-app/app/components/shared/ui'
 import {configureRoutes} from '@salesforce/retail-react-app/app/utils/routes-utils'
 
+// Constants
+import {
+    PASSWORDLESS_LOGIN_LANDING_PATH,
+    RESET_PASSWORD_LANDING_PATH
+} from '@salesforce/retail-react-app/app/constants'
+
 const fallback = <Skeleton height="75vh" width="100%" />
+const socialRedirectURI = getConfig()?.app?.login?.social?.redirectURI
 
 // Pages
 const Home = loadable(() => import('./pages/home'), {fallback})
@@ -35,9 +42,13 @@ const Checkout = loadable(() => import('./pages/checkout'), {
     fallback
 })
 const CheckoutConfirmation = loadable(() => import('./pages/checkout/confirmation'), {fallback})
+const SocialLoginRedirect = loadable(() => import('./pages/social-login-redirect'), {fallback})
 const LoginRedirect = loadable(() => import('./pages/login-redirect'), {fallback})
 const ProductDetail = loadable(() => import('./pages/product-detail'), {fallback})
 const ProductList = loadable(() => import('./pages/product-list'), {
+    fallback
+})
+const StoreLocator = loadable(() => import('./pages/store-locator'), {
     fallback
 })
 const Wishlist = loadable(() => import('./pages/account/wishlist'), {
@@ -67,6 +78,16 @@ export const routes = [
         exact: true
     },
     {
+        path: RESET_PASSWORD_LANDING_PATH,
+        component: ResetPassword,
+        exact: true
+    },
+    {
+        path: PASSWORDLESS_LOGIN_LANDING_PATH,
+        component: Login,
+        exact: true
+    },
+    {
         path: '/account',
         component: Account
     },
@@ -82,6 +103,11 @@ export const routes = [
     {
         path: '/callback',
         component: LoginRedirect,
+        exact: true
+    },
+    {
+        path: socialRedirectURI || '/social-callback',
+        component: SocialLoginRedirect,
         exact: true
     },
     {
@@ -104,6 +130,10 @@ export const routes = [
     {
         path: '/account/wishlist',
         component: Wishlist
+    },
+    {
+        path: '/store-locator',
+        component: StoreLocator
     },
     {
         path: '*',

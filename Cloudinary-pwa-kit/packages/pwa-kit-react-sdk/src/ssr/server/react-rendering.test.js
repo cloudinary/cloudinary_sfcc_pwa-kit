@@ -58,6 +58,7 @@ jest.mock('../universal/routes', () => {
     const React = require('react')
     const PropTypes = require('prop-types')
     const errors = require('../universal/errors')
+    const RedirectWithStatus = require('../universal/components/redirect-with-status').default
     const {Redirect} = require('react-router-dom')
     const {Helmet} = require('react-helmet')
     const {useQuery} = require('@tanstack/react-query')
@@ -183,6 +184,16 @@ jest.mock('../universal/routes', () => {
         }
     }
 
+    class RedirectWithStatusPage extends React.Component {
+        static getProps() {
+            return Promise.resolve()
+        }
+
+        render() {
+            return <RedirectWithStatus to="/elsewhere/" status={301} />
+        }
+    }
+
     class HelmetPage extends React.Component {
         static getProps() {
             return Promise.resolve()
@@ -304,6 +315,10 @@ jest.mock('../universal/routes', () => {
             {
                 path: '/redirect/',
                 component: RedirectPage
+            },
+            {
+                path: '/redirectWithStatus/',
+                component: RedirectWithStatusPage
             },
             {
                 path: '/init-sets-status/',
@@ -539,6 +554,13 @@ describe('The Node SSR Environment', () => {
             }
         },
         {
+            description: `can redirect with HTTP 301 status`,
+            req: {url: '/redirectWithStatus/'},
+            assertions: (res) => {
+                expect(res.statusCode).toBe(301)
+            }
+        },
+        {
             description: `500 on unknown errors in getProps`,
             req: {url: '/unknown-error/'},
             assertions: (res) => {
@@ -696,9 +718,17 @@ describe('The Node SSR Environment', () => {
             assertions: (res) => {
                 expect(res.statusCode).toBe(404)
 
-                // we'll expect that this method is called three times,
-                // twice for rendering pipeline because of the prepass step and one for http request logging
-                expect(console.log).toHaveBeenCalledTimes(3)
+                // Because of the prepass step we'll expect that this method is called twice.
+                expect(console.log).toHaveBeenCalledTimes(2)
+            }
+        },
+        {
+            description: `Server-Timing header is present in the response`,
+            req: {url: '/pwa/', query: {__server_timing: '1'}},
+            assertions: (res) => {
+                expect(res.headers['server-timing']).toContain('route-matching;dur=')
+                expect(res.headers['server-timing']).toContain('render-to-string;dur=')
+                expect(res.headers['server-timing']).toContain('total;dur=')
             }
         }
     ]

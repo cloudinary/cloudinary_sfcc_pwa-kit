@@ -19,7 +19,7 @@ import {
     Alert,
     AlertIcon,
     Divider
-} from '@chakra-ui/react'
+} from '@salesforce/retail-react-app/app/components/shared/ui'
 import { useForm } from 'react-hook-form'
 import { useParams } from 'react-router-dom'
 import { useOrder, useProducts, useAuthHelper, AuthHelpers } from '@salesforce/commerce-sdk-react'
@@ -36,6 +36,7 @@ import CartItemVariantAttributes from '@salesforce/retail-react-app/app/componen
 import CartItemVariantPrice from '@salesforce/retail-react-app/app/components/item-variant/item-price'
 import { useCurrentCustomer } from '@salesforce/retail-react-app/app/hooks/use-current-customer'
 import { API_ERROR_MESSAGE } from '@salesforce/retail-react-app/app/constants'
+import { useCurrency } from '@salesforce/retail-react-app/app/hooks'
 
 // Cloudinary Component to Render CLD images on Order-Confirmation
 import CldCartItemVariantImage from '../../../../app/components/cloudinary-item-image'
@@ -50,7 +51,7 @@ const CheckoutConfirmation = () => {
     {/** Cloudinary Custom Code Starts */ }
     const [orderConfirmation, setOrderConfirmation] = useState(false)
     {/** Cloudinary Custom Code Ends */ }
-    
+
     const register = useAuthHelper(AuthHelpers.Register)
     const { data: order } = useOrder(
         {
@@ -60,16 +61,16 @@ const CheckoutConfirmation = () => {
             enabled: !!orderNo && onClient
         }
     )
+    const { currency } = useCurrency()
     const itemIds = order?.productItems.map((item) => item.productId)
     const { data: products } = useProducts({ parameters: { ids: itemIds?.join(',') } })
     const productItemsMap = products?.data.reduce((map, item) => ({ ...map, [item.id]: item }), {})
     const form = useForm()
-    
+
     {/** Cloudinary Custom Code Starts */ }
     useEffect(() => {
         if (products?.data) {
             Object.keys(products.data).map((key) => {
-                console.log(products?.data[key]?.c_cloudinary?.orderConfirmation)
                 setOrderConfirmation(products?.data[key]?.c_cloudinary?.orderConfirmation)
                 return
             })
@@ -356,7 +357,9 @@ const CheckoutConfirmation = () => {
                                                                     <CartItemVariantAttributes
                                                                         includeQuantity
                                                                     />
-                                                                    <CartItemVariantPrice />
+                                                                    <CartItemVariantPrice
+                                                                        currency={currency}
+                                                                    />
                                                                 </Flex>
                                                             </Stack>
                                                         </Flex>

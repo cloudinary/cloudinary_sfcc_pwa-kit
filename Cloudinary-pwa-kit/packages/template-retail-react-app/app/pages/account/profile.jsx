@@ -6,6 +6,7 @@
  */
 
 import React, {forwardRef, useEffect, useRef, useState} from 'react'
+import PropTypes from 'prop-types'
 import {FormattedMessage, useIntl} from 'react-intl'
 import {
     Alert,
@@ -31,7 +32,8 @@ import FormActionButtons from '@salesforce/retail-react-app/app/components/forms
 import {
     useShopperCustomersMutation,
     useAuthHelper,
-    AuthHelpers
+    AuthHelpers,
+    useCustomerType
 } from '@salesforce/commerce-sdk-react'
 import {useCurrentCustomer} from '@salesforce/retail-react-app/app/hooks/use-current-customer'
 
@@ -60,7 +62,7 @@ const Skeleton = forwardRef(({children, height, width, ...rest}, ref) => {
 
 Skeleton.displayName = 'Skeleton'
 
-const ProfileCard = () => {
+const ProfileCard = ({allowPasswordChange = false}) => {
     const {formatMessage} = useIntl()
     const headingRef = useRef(null)
     const {data: customer} = useCurrentCustomer()
@@ -141,6 +143,7 @@ const ProfileCard = () => {
                 </Skeleton>
             }
             editing={isEditing}
+            disableEdit={!allowPasswordChange}
             isLoading={form.formState.isSubmitting}
             onEdit={isRegistered ? () => setIsEditing(true) : undefined}
             layerStyle="cardBordered"
@@ -228,15 +231,19 @@ const ProfileCard = () => {
     )
 }
 
+ProfileCard.propTypes = {
+    allowPasswordChange: PropTypes.bool
+}
+
 const PasswordCard = () => {
     const {formatMessage} = useIntl()
     const headingRef = useRef(null)
     const {data: customer} = useCurrentCustomer()
-    const {isRegistered, customerId, email} = customer
+    const {isRegistered} = customer
 
-    const login = useAuthHelper(AuthHelpers.LoginRegisteredUserB2C)
-
-    const updateCustomerPassword = useShopperCustomersMutation('updateCustomerPassword')
+    // Here we use AuthHelpers.UpdateCustomerPassword rather than invoking the updateCustomerPassword mutation directly
+    // because the AuthHelper will re-authenticate the user's current session after the password change.
+    const updateCustomerPassword = useAuthHelper(AuthHelpers.UpdateCustomerPassword)
     const toast = useToast()
     const [isEditing, setIsEditing] = useState(false)
 
@@ -245,40 +252,26 @@ const PasswordCard = () => {
     const submit = async (values) => {
         try {
             form.clearErrors()
-            updateCustomerPassword.mutate(
-                {
-                    parameters: {customerId},
-                    body: {
-                        password: values.password,
-                        currentPassword: values.currentPassword
-                    }
-                },
-                {
-                    onSuccess: () => {
-                        setIsEditing(false)
-                        toast({
-                            title: formatMessage({
-                                defaultMessage: 'Password updated',
-                                id: 'password_card.info.password_updated'
-                            }),
-                            status: 'success',
-                            isClosable: true
-                        })
-                        login.mutate({
-                            username: email,
-                            password: values.password
-                        })
-                        headingRef?.current?.focus()
-                        form.reset()
-                    },
-                    onError: async (err) => {
-                        const resObj = await err.response.json()
-                        form.setError('root.global', {type: 'manual', message: resObj.detail})
-                    }
-                }
-            )
+            await updateCustomerPassword.mutateAsync({
+                customer,
+                password: values.password,
+                currentPassword: values.currentPassword,
+                shouldReloginCurrentSession: true
+            })
+            setIsEditing(false)
+            toast({
+                title: formatMessage({
+                    defaultMessage: 'Password updated',
+                    id: 'password_card.info.password_updated'
+                }),
+                status: 'success',
+                isClosable: true
+            })
+            headingRef?.current?.focus()
+            form.reset()
         } catch (error) {
-            form.setError('root.global', {type: 'manual', message: error.message})
+            const resObj = await error.response.json()
+            form.setError('root.global', {type: 'manual', message: resObj.detail})
         }
     }
 
@@ -350,6 +343,8 @@ const AccountDetail = () => {
         headingRef?.current?.focus()
     }, [])
 
+    const {isExternal} = useCustomerType()
+
     return (
         <Stack data-testid="account-detail-page" spacing={6}>
             <Heading as="h1" fontSize="24px" tabIndex="0" ref={headingRef}>
@@ -360,8 +355,8 @@ const AccountDetail = () => {
             </Heading>
 
             <Stack spacing={4}>
-                <ProfileCard />
-                <PasswordCard />
+                <ProfileCard allowPasswordChange={!isExternal} />
+                {!isExternal && <PasswordCard />}
             </Stack>
         </Stack>
     )

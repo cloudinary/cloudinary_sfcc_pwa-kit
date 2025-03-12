@@ -17,6 +17,37 @@ module.exports = {
             // This boolean value dictates whether or not default site or locale values are shown in the url. Defaults to: false
             // showDefaults: true
         },
+        login: {
+            passwordless: {
+                // Enables or disables passwordless login for the site. Defaults to: false
+                enabled: false,
+                // The callback URI, which can be an absolute URL (including third-party URIs) or a relative path set up by the developer.
+                // Required in 'callback' mode; if missing, passwordless login defaults to 'sms' mode, which requires Marketing Cloud configuration.
+                // If the env var `PASSWORDLESS_LOGIN_CALLBACK_URI` is set, it will override the config value.
+                callbackURI:
+                    '/passwordless-login-callback',
+                // The landing path for passwordless login
+                landingPath: '/passwordless-login-landing'
+            },
+            social: {
+                // Enables or disables social login for the site. Defaults to: false
+                enabled: false,
+                // The third-party identity providers supported by your app. The PWA Kit supports Google and Apple by default.
+                // Additional IDPs will also need to be added to the IDP_CONFIG in the SocialLogin component.
+                idps: ['google', 'apple'],
+                // The redirect URI used after a successful social login authentication.
+                // This should be a relative path set up by the developer.
+                // If the env var `SOCIAL_LOGIN_REDIRECT_URI` is set, it will override the config value.
+                redirectURI: '/social-callback'
+            },
+            resetPassword: {
+                // The callback URI, which can be an absolute URL (including third-party URIs) or a relative path set up by the developer.
+                // If the env var `RESET_PASSWORD_CALLBACK_URI` is set, it will override the config value.
+                callbackURI: '/reset-password-callback',
+                // The landing path for reset password
+                landingPath: '/reset-password-landing'
+            }
+        },
         // The default site for your app. This value will be used when a siteRef could not be determined from the url
         defaultSite: 'RefArch',
         // Provide aliases for your sites. These will be used in place of your site id when generating paths throughout the application.
@@ -29,10 +60,10 @@ module.exports = {
         commerceAPI: {
             proxyPath: '/mobify/proxy/api',
             parameters: {
-                clientId: 'CLIENT_ID',
-                organizationId: 'ORGANIZATION_ID',
-                shortCode: 'SHORT_CODE',
-                siteId: 'SITE_ID'
+                clientId: '{CLIENT_ID}',
+                organizationId: '{ORGANIZATION_ID}',
+                shortCode: 'kv7kzm78',
+                siteId: 'RefArch'
             }
         },
         // Einstein api config
@@ -66,14 +97,14 @@ module.exports = {
     ],
     // Additional parameters that configure Express app behavior.
     ssrParameters: {
-        ssrFunctionNodeVersion: '18.x',
+        ssrFunctionNodeVersion: '22.x',
         proxyConfigs: [
             {
                 host: 'kv7kzm78.api.commercecloud.salesforce.com',
                 path: 'api'
             },
             {
-                host: 'HOST_NAME', // e.g zzrf-001.dx.commercecloud.salesforce.com
+                host: '{HOST_NAME}',
                 path: 'ocapi'
             }
         ]
@@ -81,15 +112,15 @@ module.exports = {
 
     cloudinary: {
         parameters: {
-            clientId: 'CLIENT_ID',
-            organizationId: 'ORGANIZATION_ID',
-            shortCode: 'SHORT_CODE',
-            siteId: 'SITE_ID',
-            host: 'HOST_NAME', // e.g zzrf-001.dx.commercecloud.salesforce.com
+            clientId: '{CLIENT_ID}',
+            organizationId: '{ORGANIZATION_ID}',
+            shortCode: 'kv7kzm78',
+            siteId: 'RefArch',
+            host: '{HOST_NAME}',
             contentAssetId: 'home-main'
         },
         versions: {
-            CLDVideoPlayeVersion: '1.10.1',
+            CLDVideoPlayerVersion: '1.10.1',
             CLDCoreShrinkwrapJSURLVersion: '2.13.0'
         },
         CLD_TRACKING_PARAM: '?_i=AP3',

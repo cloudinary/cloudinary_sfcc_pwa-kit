@@ -1,58 +1,35 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import PropTypes from 'prop-types'
 import { AspectRatio, Box, Image } from '@chakra-ui/react'
-import { updateTrackingParam, updateCloudinarySource } from '../../utils/imageSrcset'
+import { cloudinary } from '../../../config/default'
+import { updateTrackingParam } from '../../utils/imageSrcset'
 
 /**
  * The image gallery displays The Image Gallery Coming from Cloudinary in Product-Detail Page.
  */
-const CloudinaryLineItemImage = ({ cldProduct = {}, image = {}, cloudName }) => {
-
-    useEffect(() => {
-        if (cldProduct?.miniCartImage?.isResponsive || cldProduct?.isResponsive) {
-            window.cldObj = window.cldObj || window.cloudinary.default.Cloudinary.new({cloud_name: cloudName || cldProduct})
-            window.cldObj?.responsive()
-        }
-    }, [])
-
+const CloudinaryLineItemImage = ({ cldProduct = {}, image = {} }) => {
     return (
         <>
             {cldProduct?.miniCartImage?.url ? (
                 <Box w="24" flex="none">
                     <AspectRatio ratio="1">
-                        {cldProduct?.miniCartImage?.isResponsive ? (
-                            <Image className={'cld-responsive'}
-                                data-src={updateCloudinarySource(cldProduct.miniCartImage.url)} alt={image?.alt}
-                            />
-                        ) : (
-                            <Image
-                                src={updateCloudinarySource(cldProduct.miniCartImage.url)} alt={image?.alt}
-                                srcSet={cldProduct.miniCartImage.srcset && updateTrackingParam(cldProduct.miniCartImage.srcset)}
-                                sizes={cldProduct.miniCartImage.sizes && cldProduct.miniCartImage.sizes}
-                            />
-                        )}
+                        <Image className={cldProduct?.miniCartImage?.isResponsive && 'cld-responsive'}
+                            src={cldProduct?.miniCartImage?.url.lastIndexOf('?') > -1 ? cldProduct?.miniCartImage?.url.substring(0, cldProduct?.miniCartImage?.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : cldProduct?.miniCartImage?.url + cloudinary.CLD_TRACKING_PARAM} alt={image && image.alt ? image.alt : null}
+                            srcset={!cldProduct?.miniCartImage?.isResponsive && cldProduct?.miniCartImage?.srcset && updateTrackingParam(cldProduct?.miniCartImage?.srcset)}
+                            sizes={!cldProduct?.miniCartImage?.isResponsive && cldProduct?.miniCartImage?.sizes}
+                        />
                     </AspectRatio>
                 </Box>
             ) : (
                 <>
                     {cldProduct?.url && (
-                        <>
-                            {cldProduct?.isResponsive ? (
-                                <Image
-                                    className={'cld-responsive'}
-                                    alt={image.alt}
-                                    data-src={updateCloudinarySource(cldProduct.url)}
-                                />
-                            ) : (
-                                <Image
-                                    alt={image.alt}
-                                    src={updateCloudinarySource(cldProduct.url)}
-                                    srcSet={cldProduct.srcset && updateTrackingParam(cldProduct.srcset)}
-                                    sizes={cldProduct.sizes && cldProduct.sizes}
-                                />
-                            )}
-                        </>
-
+                        <Image
+                            className={cldProduct?.isResponsive && 'cld-responsive'}
+                            alt={image.alt}
+                            src={`${cldProduct.url.lastIndexOf('?') > -1 ? cldProduct.url.substring(0, cldProduct.url.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : cldProduct.url + cloudinary.CLD_TRACKING_PARAM}`}
+                            srcset={!cldProduct.isResponsive && cldProduct.srcset && updateTrackingParam(cldProduct.srcset)}
+                            sizes={!cldProduct.isResponsive && cldProduct.sizes}
+                        />
                     )}
                 </>
             )
@@ -63,8 +40,7 @@ const CloudinaryLineItemImage = ({ cldProduct = {}, image = {}, cloudName }) => 
 
 CloudinaryLineItemImage.propTypes = {
     cldProduct: PropTypes.object,
-    image: PropTypes.object,
-    cloudName: PropTypes.string
+    image: PropTypes.object
 }
 
 export default CloudinaryLineItemImage

@@ -12,6 +12,7 @@ import {noop} from '@salesforce/retail-react-app/app/utils/utils'
 export const DEFAULT_LOCALE = 'en-US'
 export const DEFAULT_SITE_TITLE = 'Retail React App'
 export const MAX_CACHE_AGE = 60 * 15 // 15 min
+export const STALE_WHILE_REVALIDATE = 60 * 15 // 15 min
 
 // Constants used for product searching.
 export const DEFAULT_SEARCH_PARAMS = {limit: 25, offset: 0, sort: 'best-matches', refine: []}
@@ -25,6 +26,14 @@ export const RECENT_SEARCH_LIMIT = 5
 export const RECENT_SEARCH_KEY = 'recent-search-key'
 export const RECENT_SEARCH_MIN_LENGTH = 3
 
+// Constants for product list page
+export const PRODUCT_LIST_IMAGE_VIEW_TYPE = 'large'
+export const PRODUCT_LIST_SELECTABLE_ATTRIBUTE_ID = 'color'
+
+// Constants for product tile page
+export const PRODUCT_TILE_IMAGE_VIEW_TYPE = 'large'
+export const PRODUCT_TILE_SELECTABLE_ATTRIBUTE_ID = 'color'
+
 // Constants for the Homepage's Shop Products section.
 export const HOME_SHOP_PRODUCTS_CATEGORY_ID = 'newarrivals'
 export const HOME_SHOP_PRODUCTS_LIMIT = 10
@@ -32,6 +41,26 @@ export const HOME_SHOP_PRODUCTS_LIMIT = 10
 // Constants for menu
 export const CAT_MENU_DEFAULT_NAV_SSR_DEPTH = 1
 export const CAT_MENU_DEFAULT_ROOT_CATEGORY = 'root'
+
+// Default details of badge labels and the corresponding product custom properties that enable badges.
+export const PRODUCT_BADGE_DETAILS = [
+    {
+        propertyName: 'c_isNew',
+        label: defineMessage({
+            id: 'product_tile.badge.label.new',
+            defaultMessage: 'New'
+        }),
+        color: 'green'
+    },
+    {
+        propertyName: 'c_isSale',
+        label: defineMessage({
+            id: 'product_tile.badge.label.sale',
+            defaultMessage: 'Sale'
+        }),
+        color: 'yellow'
+    }
+]
 
 export const cssColorGroups = {
     beige: '#d3bca9',
@@ -61,6 +90,19 @@ export const FILTER_ACCORDION_SATE = 'filters-expanded-index'
 export const API_ERROR_MESSAGE = defineMessage({
     id: 'global.error.something_went_wrong',
     defaultMessage: 'Something went wrong. Try again!'
+})
+export const INVALID_TOKEN_ERROR_MESSAGE = defineMessage({
+    defaultMessage: 'Invalid token, please try again.',
+    id: 'global.error.invalid_token'
+})
+export const FEATURE_UNAVAILABLE_ERROR_MESSAGE = defineMessage({
+    defaultMessage: 'This feature is not currently available.',
+    id: 'global.error.feature_unavailable'
+})
+export const CREATE_ACCOUNT_FIRST_ERROR_MESSAGE = defineMessage({
+    defaultMessage:
+        'This feature is not currently available. You must create an account to access this feature.',
+    id: 'global.error.create_account'
 })
 
 export const HOME_HREF = '/'
@@ -120,7 +162,7 @@ export const SHIPPING_COUNTRY_CODES = [
 ]
 
 // Constant to Enable Active Data
-export const ACTIVE_DATA_ENABLED = false
+export const ACTIVE_DATA_ENABLED = true
 
 export const REMOVE_UNAVAILABLE_CART_ITEM_DIALOG_CONFIG = {
     dialogTitle: defineMessage({
@@ -136,5 +178,93 @@ export const REMOVE_UNAVAILABLE_CART_ITEM_DIALOG_CONFIG = {
         defaultMessage: 'Remove',
         id: 'confirmation_modal.remove_cart_item.action.remove'
     }),
+    primaryActionAriaLabel: defineMessage({
+        defaultMessage: 'Remove unavailable products',
+        id: 'confirmation_modal.remove_cart_item.assistive_msg.remove'
+    }),
     onPrimaryAction: noop
 }
+
+export const SUPPORTED_STORE_LOCATOR_COUNTRIES = [
+    {
+        countryCode: 'US',
+        countryName: defineMessage({
+            defaultMessage: 'United States',
+            id: 'store_locator.dropdown.united_states'
+        })
+    },
+    {
+        countryCode: 'DE',
+        countryName: defineMessage({
+            defaultMessage: 'Germany',
+            id: 'store_locator.dropdown.germany'
+        })
+    }
+]
+
+export const DEFAULT_STORE_LOCATOR_COUNTRY = {
+    countryCode: 'DE',
+    countryName: defineMessage({
+        defaultMessage: 'Germany',
+        id: 'store_locator.dropdown.germany'
+    })
+}
+export const DEFAULT_STORE_LOCATOR_POSTAL_CODE = '10178'
+export const STORE_LOCATOR_DISTANCE = 100
+export const STORE_LOCATOR_NUM_STORES_PER_LOAD = 10
+export const STORE_LOCATOR_DISTANCE_UNIT = 'km'
+export const STORE_LOCATOR_IS_ENABLED = true
+
+export const DEFAULT_DNT_STATE = true
+// Constants for shopper context
+// Supported non-string field types used in SHOPPER_CONTEXT_SEARCH_PARAMS below.
+// Only non-string types need to be identified using the "type" field.
+// If no "type" field is present, the value will be parsed as a string by default.
+export const SHOPPER_CONTEXT_FIELD_TYPES = {
+    INT: 'int',
+    DOUBLE: 'double',
+    ARRAY: 'array'
+}
+export const SHOPPER_CONTEXT_SEARCH_PARAMS = {
+    sourceCode: {paramName: 'sourceCode'},
+    geoLocation: {
+        city: {paramName: 'city'},
+        country: {paramName: 'country'},
+        countryCode: {paramName: 'countryCode'},
+        latitude: {paramName: 'latitude', type: SHOPPER_CONTEXT_FIELD_TYPES.DOUBLE},
+        longitude: {paramName: 'longitude', type: SHOPPER_CONTEXT_FIELD_TYPES.DOUBLE},
+        metroCode: {paramName: 'metroCode'},
+        postalCode: {paramName: 'postalCode'},
+        region: {paramName: 'region'},
+        regionCode: {paramName: 'regionCode'}
+    },
+    customQualifiers: {
+        // Add custom qualifiers here
+    },
+    assignmentQualifiers: {
+        // Add assignment qualifiers here
+    }
+}
+
+// Constants for Login
+export const LOGIN_TYPES = {
+    PASSWORD: 'password',
+    PASSWORDLESS: 'passwordless',
+    SOCIAL: 'social'
+}
+
+// Constants for Password Reset
+export const RESET_PASSWORD_LANDING_PATH = '/reset-password-landing'
+
+// Constants for Passwordless Login
+export const PASSWORDLESS_LOGIN_LANDING_PATH = '/passwordless-login-landing'
+
+export const PASSWORDLESS_ERROR_MESSAGES = [
+    /callback_uri doesn't match/i,
+    /passwordless permissions error/i,
+    /client secret is not provided/i
+]
+
+export const INVALID_TOKEN_ERROR = /invalid token/i
+
+export const USER_NOT_FOUND_ERROR = /user not found/i

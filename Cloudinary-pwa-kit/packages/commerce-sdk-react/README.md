@@ -13,6 +13,21 @@ Thank you for being a part of our community and for your continuous support! :ra
 <p align="center">
 A collection of <a href="https://tanstack.com/query/latest/docs/react/overview">react-query</a> hooks for <b>fetching</b>, <b>caching</b>, and <b>mutating data</b> from the <b><a href="https://developer.salesforce.com/docs/commerce/commerce-api/overview">Salesforce B2C Commerce API</a></b> (SCAPI).</p>
 
+## :warning: Planned API Changes :warning:
+
+### Shopper Context
+
+Starting July 31st 2024, all endpoints in the Shopper context API will require the `siteId` parameter for new customers. This field is marked as optional for backward compatibility and will be changed to mandatory tentatively by January 2025. You can read more about the planned change [here](https://developer.salesforce.com/docs/commerce/commerce-api/references/shopper-context?meta=Summary) in the notes section.
+
+### Shopper Login (SLAS)
+
+SLAS will soon require new tenants to pass `channel_id` as an argument for retrieving guest access tokens. You can read more about the planned change [here](https://developer.salesforce.com/docs/commerce/commerce-api/guide/slas.html#guest-tokens).
+
+Please be aware that existing tenants are on a temporary allow list and will see no immediate disruption to service.  We do ask that all users seek to adhere to the `channel_id` requirement before the end of August to enhance your security posture before the holiday peak season.
+
+In practice, we recommend:
+- For customers using the SLAS helpers with a private client, it is recommended to upgrade to `v3.0.0` of the `commerce-sdk-react`.
+
 ## 🎯 Features
 
 -   Shopper authentication & token management via [SLAS](https://developer.salesforce.com/docs/commerce/commerce-api/references/shopper-login)
@@ -28,7 +43,7 @@ A collection of <a href="https://tanstack.com/query/latest/docs/react/overview">
 npm install @salesforce/commerce-sdk-react @tanstack/react-query
 ```
 
-## ⚡️ Quickstart (PWA Kit v2.3.0+)
+## ⚡️ Quickstart (PWA Kit v3.0+)
 
 To integrate this library with your PWA Kit application you can use the `CommerceApiProvider` directly assuming that you use the `withReactQuery` higher order component to wrap your `AppConfig` component. Below is a snippet of how this is accomplished.
 
@@ -39,6 +54,10 @@ import {CommerceApiProvider} from '@salesforce/commerce-sdk-react'
 import {withReactQuery} from '@salesforce/pwa-kit-react-sdk/ssr/universal/components/with-react-query'
 
 const AppConfig = ({children}) => {
+    const headers = {
+        'correlation-id': correlationId
+    }
+
     return (
         <CommerceApiProvider
             clientId="12345678-1234-1234-1234-123412341234"
@@ -49,6 +68,11 @@ const AppConfig = ({children}) => {
             shortCode="12345678"
             locale="en-US"
             currency="USD"
+            headers={headers}
+            // Uncomment 'enablePWAKitPrivateClient' to use SLAS private client login flows.
+            // Make sure to also enable useSLASPrivateClient in ssr.js when enabling this setting.
+            // enablePWAKitPrivateClient={true}
+            logger={createLogger({packageName: 'commerce-sdk-react'})}
         >
             {children}
         </CommerceApiProvider>
@@ -110,68 +134,10 @@ export default App
 
 _💡 This section assumes you have read and completed the [Authorization for Shopper APIs](https://developer.salesforce.com/docs/commerce/commerce-api/guide/authorization-for-shopper-apis.html) guide._
 
-To help reduce boilerplate code for managing shopper authentication, by default, this library automatically initializes shopper session and manages the tokens for developers. Currently, the library supports the [Public Client login flow](https://developer.salesforce.com/docs/commerce/commerce-api/guide/slas-public-client.html).
+To help reduce boilerplate code for managing shopper authentication, by default, this library automatically initializes shopper session and manages the tokens for developers. Commerce-sdk-react supports both the [SLAS Public Client login flow](https://developer.salesforce.com/docs/commerce/commerce-api/guide/slas-public-client.html) and [SLAS Private Client login flow](https://developer.salesforce.com/docs/commerce/commerce-api/guide/slas-private-client.html). Authorization using a private client is supported in PWA Kit 3.5 and later, and is the recommended authorization workflow.
 
-Commerce-react-sdk supports both public and private flow of the [Authorization for Shopper APIs](https://developer.salesforce.com/docs/commerce/commerce-api/guide/authorization-for-shopper-apis.html) guide._
-You can choose to use either public or private slas to login. By default, public flow is enabled.
-
-#### How private SLAS works
-This section assumes you read and understand how [private SLAS](https://developer.salesforce.com/docs/commerce/commerce-api/guide/slas-private-client.html) flow works
-
-To enable private slas flow, you need to pass your secret into the CommercerProvider via clientSecret prop.
-**Note** You should only use private slas if you know you can secure your secret since commercer-sdk-react runs isomorphically.
-
-```js
-// app/components/_app-config/index.jsx
-
-import {CommerceApiProvider} from '@salesforce/commerce-sdk-react'
-import {withReactQuery} from '@salesforce/pwa-kit-react-sdk/ssr/universal/components/with-react-query'
-
-const AppConfig = ({children}) => {
-    return (
-        <CommerceApiProvider
-            clientId="12345678-1234-1234-1234-123412341234"
-            organizationId="f_ecom_aaaa_001"
-            proxy="localhost:3000/mobify/proxy/api"
-            redirectURI="localhost:3000/callback"
-            siteId="RefArch"
-            shortCode="12345678"
-            locale="en-US"
-            currency="USD"
-            clientSecret="<your-slas-private-secret>"
-        >
-            {children}
-        </CommerceApiProvider>
-    )
-}
-```
-#### Disable slas private warnings 
-By default, a warning as below will be displayed on client side to remind developers to always keep their secret safe and secured.
-```js
-'You are potentially exposing SLAS secret on browser. Make sure to keep it safe and secure!'
-```
-You can disable this warning by using CommerceProvider prop `silenceWarnings`
-
-```js
-const AppConfig = ({children}) => {
-    return (
-        <CommerceApiProvider
-            clientId="12345678-1234-1234-1234-123412341234"
-            organizationId="f_ecom_aaaa_001"
-            proxy="localhost:3000/mobify/proxy/api"
-            redirectURI="localhost:3000/callback"
-            siteId="RefArch"
-            shortCode="12345678"
-            locale="en-US"
-            currency="USD"
-            clientSecret="<your-slas-private-secret>"
-            silenceWarnings={true}
-        >
-            {children}
-        </CommerceApiProvider>
-    )
-}
-```
+#### Using a private SLAS client
+To enable a private client, see [Use a SLAS Private Client](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/use-a-slas-private-client.html).
 
 ### Shopper Session Initialization
 
@@ -306,7 +272,135 @@ const Example = ({basketId}) => {
 }
 ```
 
-You could also import the mutation options as a constant like:
+##### `useCustomMutation`
+
+The `useCustomMutation` hook facilitates communication with the SCAPI custom endpoint. It has a different signature than the other declared mutation hooks.
+
+###### Parameters
+
+- `options` (Object): Configuration for the API request.
+  - `method` (String): The HTTP method to use (e.g., 'POST', 'GET').
+  - `customApiPathParameters` (Object): Contains parameters to define the API path.
+    - `endpointPath` (String): Specific endpoint path to target in the API.
+    - `apiName` (String): The name of the API.
+
+- `clientConfig` (Object): Configuration settings for the client.
+  - `parameters` (Object): Essential parameters required by the Salesforce Commerce Cloud API.
+    - `clientId` (String): Your client ID.
+    - `siteId` (String): Your site ID.
+    - `organizationId` (String): Your organization ID.
+    - `shortCode` (String): Short code for your organization.
+  - `proxy` (String): Proxy address for API calls.
+
+- `rawResponse` (Boolean): Determines whether to receive the raw response from the API or a parsed version.
+
+###### `mutate` Method
+
+The `mutation.mutate(args)` function is used to execute the mutation. It accepts an argument `args`, which is an object that may contain the following properties:
+
+- `headers` (Object): Optional headers to send with the request.
+- `parameters` (Object): Optional query parameters to append to the API URL.
+- `body` (Object): Optional the payload for POST, PUT, PATCH methods.
+
+##### Usage
+
+Below is a sample usage of the `useCustomMutation` hook within a React component.
+
+
+
+```jsx
+const clientConfig = {
+    parameters: {
+        clientId: 'CLIENT_ID',
+        siteId: 'SITE_ID',
+        organizationId: 'ORG_ID',
+        shortCode: 'SHORT_CODE'
+    },
+    proxy: 'http://localhost:8888/mobify/proxy/api'
+};
+
+const mutation = useCustomMutation({
+    options: {
+        method: 'POST',
+        customApiPathParameters: {
+            endpointPath: 'test-hello-world',
+            apiName: 'hello-world'
+        }
+    },
+    clientConfig,
+    rawResponse: false
+});
+
+// In your React component
+<button onClick={() => mutation.mutate({
+    body: { test: '123' },
+    parameters: { additional: 'value' },
+    headers: { ['X-Custom-Header']: 'test' }
+})}>
+    Send Request
+</button>
+```
+
+It is a common scenario that a mutate function might pass a value along to a request that is dynamic and therefore can't be available when the hook is declared (contrary to example in [Mutation Hooks](#mutation-hooks) above, which would work for a button that only adds one product to a basket, but doesn't handle a changeable input for adding a different product).
+
+Sending a custom body param is supported, the example below combines this strategy with the use of a `useCustomMutation()` hook, making it possible to dynamically declare a body when calling a custom API endpoint.
+
+```jsx
+import {useCustomMutation} from '@salesforce/commerce-sdk-react'
+const clientConfig = {
+    parameters: {
+        clientId: 'CLIENT_ID',
+        siteId: 'SITE_ID',
+        organizationId: 'ORG_ID',
+        shortCode: 'SHORT_CODE'
+    },
+    proxy: 'http://localhost:8888/mobify/proxy/api'
+};
+
+const mutation = useCustomMutation({
+    options: {
+        method: 'POST',
+        customApiPathParameters: {
+            endpointPath: 'path/to/resource',
+            apiName: 'hello-world'
+        }
+    },
+    clientConfig,
+    rawResponse: false
+});
+
+// use it in a react component
+const ExampleDynamicMutation = () => {
+    const [colors, setColors] = useState(['blue', 'green', 'white'])
+    const [selectedColor, setSelectedColor] = useState(colors[0])
+
+    return (
+        <>
+            <select value={selectedColor} onChange={(e) => setSelectedColor(e.target.value)}>
+                {colors.map((color, index) => (
+                    <option key={index} value={color}>
+                        {color}
+                    </option>
+                ))}
+            </select>
+            <button
+                onClick={() =>
+                    mutation.mutate({
+                        parameters: {
+                            myCustomParam: 'custom parameters'
+                        },
+                        body: {
+                            resourceParam: selectedColor
+                        }
+                    })
+                }
+            />
+        </>
+    )
+}
+```
+
+Mutations also have their named methods exported as constants, available in this way:
 
 ```jsx
 import {useShopperBasketsMutation, ShopperBasketsMutations} from '@salesforce/commerce-sdk-react'

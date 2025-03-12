@@ -5,7 +5,7 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { FormattedMessage, FormattedNumber, useIntl } from 'react-intl'
 import { useLocation } from 'react-router'
 import {
@@ -21,7 +21,7 @@ import {
     AspectRatio,
     Img,
     Skeleton
-} from '@chakra-ui/react'
+} from '@salesforce/retail-react-app/app/components/shared/ui'
 import { useCurrentCustomer } from '@salesforce/retail-react-app/app/hooks/use-current-customer'
 import { useCustomerOrders, useProducts } from '@salesforce/commerce-sdk-react'
 import useNavigation from '@salesforce/retail-react-app/app/hooks/use-navigation'
@@ -50,6 +50,7 @@ const OrderProductImages = ({ productItems }) => {
 
     return (
         <>
+            {/** Cloudinary Custom Code Starts */}
             {products && products[0]?.c_cloudinary?.orderHistory ? (
                 products?.map((product) => (
                     <CloudinaryLineItemImage
@@ -85,6 +86,7 @@ const OrderProductImages = ({ productItems }) => {
                         })}
                 </Box>
             )}
+            {/** Cloudinary Custom Code Ends */}
         </>
     )
 }
@@ -115,6 +117,12 @@ const AccountOrderHistory = () => {
 
     const pageUrls = usePageUrls({ total: paging.total, limit })
 
+    const headingRef = useRef()
+    useEffect(() => {
+        // Focus the 'Order History' header when the component mounts for accessibility
+        headingRef?.current?.focus()
+    }, [])
+
     useEffect(() => {
         window.scrollTo(0, 0)
     }, [customer, searchParams.offset])
@@ -122,7 +130,7 @@ const AccountOrderHistory = () => {
     return (
         <Stack spacing={4} data-testid="account-order-history-page">
             <Stack>
-                <Heading as="h1" fontSize="2xl">
+                <Heading as="h1" fontSize="2xl" tabIndex="0" ref={headingRef}>
                     <FormattedMessage
                         defaultMessage="Order History"
                         id="account_order_history.title.order_history"
@@ -196,7 +204,7 @@ const AccountOrderHistory = () => {
                                 <Grid templateColumns={{ base: 'repeat(auto-fit, 88px)' }} gap={4}>
                                     {/** Cloudinary Custom Code Starts */}
                                     <OrderProductImages productItems={order.productItems} />
-                                    {/** Cloudinary Custom Code Starts */}
+                                    {/** Cloudinary Custom Code Ends */}
                                 </Grid>
 
                                 <Stack

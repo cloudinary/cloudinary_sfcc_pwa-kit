@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
-import React, {useContext, createContext} from 'react'
+import React, {useContext, createContext, useEffect, useRef} from 'react'
 import PropTypes from 'prop-types'
 import {FormattedMessage} from 'react-intl'
 import {
@@ -28,12 +28,21 @@ export const ToggleCard = ({
     title,
     editing,
     disabled,
+    disableEdit,
     onEdit,
     editLabel,
     isLoading,
     children,
     ...props
 }) => {
+    const titleRef = useRef()
+
+    useEffect(() => {
+        if (editing && titleRef.current) {
+            titleRef.current.focus()
+        }
+    }, [editing])
+
     return (
         <ToggleCardContext.Provider value={{editing, disabled}}>
             <Box
@@ -51,11 +60,17 @@ export const ToggleCard = ({
                             lineHeight="30px"
                             color={disabled && !editing && 'gray.600'}
                             tabIndex="0"
+                            ref={titleRef}
                         >
                             {title}
                         </Heading>
-                        {!editing && !disabled && onEdit && (
-                            <Button variant="link" size="sm" onClick={onEdit}>
+                        {!editing && !disabled && onEdit && !disableEdit && (
+                            <Button
+                                variant="link"
+                                size="sm"
+                                onClick={onEdit}
+                                aria-label={editLabel}
+                            >
                                 {editLabel || (
                                     <FormattedMessage
                                         defaultMessage="Edit"
@@ -91,6 +106,7 @@ ToggleCard.propTypes = {
     editing: PropTypes.bool,
     isLoading: PropTypes.bool,
     disabled: PropTypes.bool,
+    disableEdit: PropTypes.bool,
     onEdit: PropTypes.func,
     children: PropTypes.any
 }

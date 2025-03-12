@@ -20,12 +20,7 @@ const fallback = <Skeleton height="75vh" width="100%" />
 // Use loadable to split code into smaller js chunks
 const Home = loadable(() => import('./pages/home'), {fallback})
 const CheckoutConfirmation = loadable(() => import('./pages/checkout/confirmation'), {fallback})
-const Account = loadable(() => import('./pages/account'), {fallback})
-const Cart = loadable(() => import('./pages/cart'), {fallback})
 const ProductDetail = loadable(() => import('./pages/product-detail'), {fallback})
-const Checkout = loadable(() => import('./pages/checkout'), {
-    fallback
-})
 
 const routes = [
     {
@@ -34,22 +29,8 @@ const routes = [
         exact: true
     },
     {
-        path: '/cart',
-        component: Cart,
-        exact: true
-    },
-    {
-        path: '/checkout',
-        component: Checkout,
-        exact: true
-    },
-    {
         path: '/checkout/confirmation/:orderNo',
         component: CheckoutConfirmation
-    },
-    {
-        path: '/account',
-        component: Account
     },
     {
         path: '/product/:productId',

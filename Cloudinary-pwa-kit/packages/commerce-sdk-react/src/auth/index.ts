@@ -15,24 +15,43 @@ import {jwtDecode, JwtPayload} from 'jwt-decode'
 import {ApiClientConfigParams, Prettify, RemoveStringIndex} from '../hooks/types'
 import {BaseStorage, LocalStorage, CookieStorage, MemoryStorage, StorageType} from './storage'
 import {CustomerType} from '../hooks/useCustomerType'
-import {getParentOrigin, isOriginTrusted, onClient} from '../utils'
 import {
+    getParentOrigin,
+    isOriginTrusted,
+    onClient,
+    getDefaultCookieAttributes,
+    isAbsoluteUrl,
+    stringToBase64
+} from '../utils'
+import {
+    MOBIFY_PATH,
+    SLAS_PRIVATE_PROXY_PATH,
     SLAS_SECRET_WARNING_MSG,
     SLAS_SECRET_PLACEHOLDER,
-    SLAS_SECRET_OVERRIDE_MSG
+    SLAS_SECRET_OVERRIDE_MSG,
+    DNT_COOKIE_NAME,
+    DWSID_COOKIE_NAME,
+    SLAS_REFRESH_TOKEN_COOKIE_TTL_OVERRIDE_MSG
 } from '../constant'
 
+import {Logger} from '../types'
+
 type TokenResponse = ShopperLoginTypes.TokenResponse
+type TrustedAgentTokenRequest = ShopperLoginTypes.TrustedAgentTokenRequest
 type Helpers = typeof helpers
 interface AuthConfig extends ApiClientConfigParams {
     redirectURI: string
     proxy: string
     fetchOptions?: ShopperLoginTypes.FetchOptions
     fetchedToken?: string
-    OCAPISessionsURL?: string
     enablePWAKitPrivateClient?: boolean
     clientSecret?: string
     silenceWarnings?: boolean
+    logger: Logger
+    defaultDnt?: boolean
+    passwordlessLoginCallbackURI?: string
+    refreshTokenRegisteredCookieTTL?: number
+    refreshTokenGuestCookieTTL?: number
 }
 
 interface JWTHeaders {
@@ -43,7 +62,14 @@ interface JWTHeaders {
 interface SlasJwtPayload extends JwtPayload {
     sub: string
     isb: string
+    dnt: string
 }
+
+type AuthorizeIDPParams = Parameters<Helpers['authorizeIDP']>[1]
+type LoginIDPUserParams = Parameters<Helpers['loginIDPUser']>[2]
+type AuthorizePasswordlessParams = Parameters<Helpers['authorizePasswordless']>[2]
+type LoginPasswordlessParams = Parameters<Helpers['getPasswordLessAccessToken']>[2]
+type LoginRegisteredUserB2CCredentials = Parameters<Helpers['loginRegisteredUserB2C']>[1]
 
 /**
  * The extended field is not from api response, we manually store the auth type,
@@ -64,6 +90,10 @@ type AuthDataKeys =
     | 'refresh_token_guest'
     | 'refresh_token_registered'
     | 'access_token_sfra'
+    | typeof DNT_COOKIE_NAME
+    | typeof DWSID_COOKIE_NAME
+    | 'code_verifier'
+    | 'uido'
 
 type AuthDataMap = Record<
     AuthDataKeys,
@@ -73,6 +103,9 @@ type AuthDataMap = Record<
         callback?: (storage: BaseStorage) => void
     }
 >
+type DntOptions = {
+    includeDefaults: boolean
+}
 
 const isParentTrusted = isOriginTrusted(getParentOrigin())
 
@@ -151,8 +184,27 @@ const DATA_MAP: AuthDataMap = {
     access_token_sfra: {
         storageType: 'cookie',
         key: 'cc-at'
+    },
+    [DNT_COOKIE_NAME]: {
+        storageType: 'cookie',
+        key: DNT_COOKIE_NAME
+    },
+    dwsid: {
+        storageType: 'cookie',
+        key: DWSID_COOKIE_NAME
+    },
+    code_verifier: {
+        storageType: 'local',
+        key: 'code_verifier'
+    },
+    uido: {
+        storageType: 'local',
+        key: 'uido'
     }
 }
+
+export const DEFAULT_SLAS_REFRESH_TOKEN_REGISTERED_TTL = 90 * 24 * 60 * 60
+export const DEFAULT_SLAS_REFRESH_TOKEN_GUEST_TTL = 30 * 24 * 60 * 60
 
 /**
  * This class is used to handle shopper authentication.
@@ -169,14 +221,22 @@ class Auth {
     private pendingToken: Promise<TokenResponse> | undefined
     private stores: Record<StorageType, BaseStorage>
     private fetchedToken: string
-    private OCAPISessionsURL: string
     private clientSecret: string
     private silenceWarnings: boolean
+    private logger: Logger
+    private defaultDnt: boolean | undefined
+    private isPrivate: boolean
+    private passwordlessLoginCallbackURI: string
+    private refreshTokenRegisteredCookieTTL: number | undefined
+    private refreshTokenGuestCookieTTL: number | undefined
+    private refreshTrustedAgentHandler:
+        | ((loginId: string, usid: string, refresh: boolean) => Promise<TokenResponse>)
+        | undefined
 
     constructor(config: AuthConfig) {
-        // Special endpoint for injecting SLAS private client secret
-        const baseUrl = config.proxy.split(`/mobify/proxy/api`)[0]
-        const privateClientEndpoint = `${baseUrl}/mobify/scapi/shopper/auth`
+        // Special endpoint for injecting SLAS private client secret.
+        const baseUrl = config.proxy.split(MOBIFY_PATH)[0]
+        const privateClientEndpoint = `${baseUrl}${SLAS_PRIVATE_PROXY_PATH}`
 
         this.client = new ShopperLogin({
             proxy: config.enablePWAKitPrivateClient ? privateClientEndpoint : config.proxy,
@@ -187,7 +247,13 @@ class Auth {
                 siteId: config.siteId
             },
             throwOnBadResponse: true,
-            fetchOptions: config.fetchOptions
+            // We need to set credentials to 'same-origin' to allow cookies to be set.
+            // This is required as SLAS calls return a dwsid cookie for hybrid sites.
+            // The dwsid value is then passed to the SCAPI as a header maintain the server affinity.
+            fetchOptions: {
+                credentials: 'same-origin',
+                ...config.fetchOptions
+            }
         })
         this.shopperCustomersClient = new ShopperCustomers({
             proxy: config.proxy,
@@ -217,16 +283,22 @@ class Auth {
 
         this.fetchedToken = config.fetchedToken || ''
 
-        this.OCAPISessionsURL = config.OCAPISessionsURL || ''
+        this.logger = config.logger
+
+        this.defaultDnt = config.defaultDnt
+
+        this.refreshTokenRegisteredCookieTTL = config.refreshTokenRegisteredCookieTTL
+
+        this.refreshTokenGuestCookieTTL = config.refreshTokenGuestCookieTTL
 
         /*
          * There are 2 ways to enable SLAS private client mode.
-         * If enablePWAKitPrivateClient=true, we route SLAS calls to /mobify/scapi/shopper/auth
+         * If enablePWAKitPrivateClient=true, we route SLAS calls to /mobify/slas/private
          * and set an internal placeholder as the client secret. The proxy will override the placeholder
          * with the actual client secret so any truthy value as the placeholder works here.
          *
          * If enablePWAKitPrivateClient=false and clientSecret is provided as a non-empty string,
-         * private client mode is enabled but we don't route calls to /mobify/scapi/shopper/auth
+         * private client mode is enabled but we don't route calls to /mobify/slas/private
          * This is how non-PWA Kit consumers of commerce-sdk-react can enable private client and set a secret
          *
          * If both enablePWAKitPrivateClient and clientSecret are truthy, enablePWAKitPrivateClient takes
@@ -248,6 +320,15 @@ class Auth {
               config.clientSecret || ''
 
         this.silenceWarnings = config.silenceWarnings || false
+
+        this.isPrivate = !!this.clientSecret
+
+        const passwordlessLoginCallbackURI = config.passwordlessLoginCallbackURI
+        this.passwordlessLoginCallbackURI = passwordlessLoginCallbackURI
+            ? isAbsoluteUrl(passwordlessLoginCallbackURI)
+                ? passwordlessLoginCallbackURI
+                : `${baseUrl}${passwordlessLoginCallbackURI}`
+            : ''
     }
 
     get(name: AuthDataKeys) {
@@ -261,6 +342,89 @@ class Auth {
         const storage = this.stores[storageType]
         storage.set(key, value, options)
         DATA_MAP[name].callback?.(storage)
+    }
+
+    private delete(name: AuthDataKeys) {
+        const {key, storageType} = DATA_MAP[name]
+        const storage = this.stores[storageType]
+        storage.delete(key)
+    }
+
+    /**
+     * Return the value of the DNT cookie or undefined if it is not set.
+     * The DNT cookie being undefined means that there is a necessity to
+     * get the user's input for consent tracking, but not that there is no
+     * DNT value to apply to analytics layers. DNT value will default to
+     * a certain value and this is reflected by effectiveDnt.
+     *
+     * If the cookie value is invalid, then it will be deleted in this function.
+     *
+     * If includeDefaults is true, then even if the cookie is not defined,
+     * defaultDnt will be returned, if it exists. If defaultDnt is not defined, then
+     * the SDK Default will return (false)
+     */
+    getDnt(options?: DntOptions) {
+        const dntCookieVal = this.get(DNT_COOKIE_NAME)
+        let dntCookieStatus = undefined
+        const accessToken = this.getAccessToken()
+        let isInSync = true
+        if (accessToken) {
+            const {dnt} = this.parseSlasJWT(accessToken)
+            isInSync = dnt === dntCookieVal
+        }
+        if ((dntCookieVal !== '1' && dntCookieVal !== '0') || !isInSync) {
+            this.delete(DNT_COOKIE_NAME)
+        } else {
+            dntCookieStatus = Boolean(Number(dntCookieVal))
+        }
+
+        if (options?.includeDefaults) {
+            const defaultDnt = this.defaultDnt
+
+            let effectiveDnt
+            const dntCookie = dntCookieVal === '1' ? true : dntCookieVal === '0' ? false : undefined
+            if (dntCookie !== undefined) {
+                effectiveDnt = dntCookie
+            } else {
+                // If the cookie is not set, read the defaultDnt preference.
+                // If defaultDnt doesn't exist, default to false, following SLAS default for dnt
+                effectiveDnt = defaultDnt !== undefined ? defaultDnt : false
+            }
+
+            return effectiveDnt
+        }
+
+        return dntCookieStatus
+    }
+
+    async setDnt(preference: boolean | null) {
+        let dntCookieVal = String(Number(preference))
+        // Use defaultDNT if defined. If not, use SLAS default DNT
+        if (preference === null) {
+            dntCookieVal = this.defaultDnt ? String(Number(this.defaultDnt)) : '0'
+        }
+        // Set the cookie once to include dnt in the access token and then again to set the expiry time
+        this.set(DNT_COOKIE_NAME, dntCookieVal, {
+            ...getDefaultCookieAttributes(),
+            secure: true
+        })
+        const accessToken = this.getAccessToken()
+        if (accessToken !== '') {
+            const {dnt} = this.parseSlasJWT(accessToken)
+            if (dnt !== dntCookieVal) {
+                await this.refreshAccessToken()
+            }
+        } else {
+            await this.refreshAccessToken()
+        }
+        if (preference !== null) {
+            const SECONDS_IN_DAY = 86400
+            this.set(DNT_COOKIE_NAME, dntCookieVal, {
+                ...getDefaultCookieAttributes(),
+                secure: true,
+                expires: Number(this.get('refresh_token_expires_in')) / SECONDS_IN_DAY
+            })
+        }
     }
 
     private clearStorage() {
@@ -331,7 +495,6 @@ class Auth {
                 this.clearSFRAAuthToken()
                 return ''
             }
-
             const {isGuest, customerId, usid} = this.parseSlasJWT(sfraAuthToken)
             this.set('access_token', sfraAuthToken)
             this.set('customer_id', customerId)
@@ -347,6 +510,16 @@ class Auth {
         return accessToken
     }
 
+    /**
+     * For Hybrid storefronts ONLY!!!
+     * This method clears out SLAS access token generated in Plugin SLAS and passed in via "cc-at" cookie.
+     *
+     * In a hybrid setup, whenever any SLAS flow executes in Plugin SLAS and an access token is generated,
+     * the access token is sent over to PWA Kit using cc-at cookie.
+     *
+     * PWA Kit will check to see if cc-at cookie exists, if it does, the access token value in localStorage is updated
+     * with value from the cc-at cookie and is then used for all SCAPI requests made from PWA Kit. The cc-at cookie is then cleared.
+     */
     private clearSFRAAuthToken() {
         const {key, storageType} = DATA_MAP['access_token_sfra']
         const store = this.stores[storageType]
@@ -354,7 +527,57 @@ class Auth {
     }
 
     /**
-     * This method stores the TokenResponse object retrived from SLAS, and
+     * For Hybrid storefronts ONLY!!!
+     * This method clears the dwsid cookie from the browser.
+     * In a hybrid setup, dwsid points to an ECOM session and is passed between PWA Kit and SFRA/SG sites via "dwsid" cookie.
+     *
+     * Whenever a registered shopper logs in on PWA Kit, we must clear the dwsid cookie if one exists. When shopper navigates
+     * to SFRA as a logged-in shopper, ECOM notices a missing DWSID, generates a new DWSID and triggers the onSession hook which uses
+     * registered shopper refresh-token and restores session and basket on SFRA.
+     */
+    private clearECOMSession() {
+        const {key, storageType} = DATA_MAP[DWSID_COOKIE_NAME]
+        const store = this.stores[storageType]
+        store.delete(key)
+    }
+
+    /**
+     * Converts a duration in seconds to a Date object.
+     * This function takes a number representing seconds and returns a Date object
+     * for the current time plus the given duration.
+     *
+     * @param {number} seconds - The number of seconds to add to the current time.
+     * @returns {Date} A Date object for the expiration time.
+     */
+    private convertSecondsToDate(seconds: number): Date {
+        if (typeof seconds !== 'number') {
+            throw new Error('The refresh_token_expires_in seconds parameter must be a number.')
+        }
+        return new Date(Date.now() + seconds * 1000)
+    }
+
+    /**
+     * Retrieves our refresh token cookie ttl value
+     */
+    private getRefreshTokenCookieTTLValue(
+        overrideValue: number | undefined,
+        responseValue: number | undefined,
+        defaultValue: number
+    ): number {
+        // Check if overrideValue is valid
+        // if not, log warning and fall back to responseValue or defaultValue
+        const isOverrideValid =
+            typeof overrideValue === 'number' && overrideValue > 0 && overrideValue <= defaultValue
+        if (!isOverrideValid && overrideValue !== undefined) {
+            this.logWarning(SLAS_REFRESH_TOKEN_COOKIE_TTL_OVERRIDE_MSG)
+        }
+
+        // Return the first valid value: overrideValue (if valid), responseValue, or defaultValue
+        return isOverrideValid ? overrideValue : responseValue || defaultValue
+    }
+
+    /**
+     * This method stores the TokenResponse object retrieved from SLAS, and
      * store the data in storage.
      */
     private handleTokenResponse(res: TokenResponse, isGuest: boolean) {
@@ -369,73 +592,31 @@ class Auth {
         this.set('customer_type', isGuest ? 'guest' : 'registered')
 
         const refreshTokenKey = isGuest ? 'refresh_token_guest' : 'refresh_token_registered'
-
+        const overrideValue = isGuest
+            ? this.refreshTokenGuestCookieTTL
+            : this.refreshTokenRegisteredCookieTTL
+        const responseValue = res.refresh_token_expires_in as number | undefined
+        const defaultValue = isGuest
+            ? DEFAULT_SLAS_REFRESH_TOKEN_GUEST_TTL
+            : DEFAULT_SLAS_REFRESH_TOKEN_REGISTERED_TTL
+        const refreshTokenTTLValue = this.getRefreshTokenCookieTTLValue(
+            overrideValue,
+            responseValue,
+            defaultValue
+        )
+        if (res.access_token) {
+            const {uido} = this.parseSlasJWT(res.access_token)
+            this.set('uido', uido)
+        }
+        const expiresDate = this.convertSecondsToDate(refreshTokenTTLValue)
+        this.set('refresh_token_expires_in', refreshTokenTTLValue.toString())
         this.set(refreshTokenKey, res.refresh_token, {
-            expires: res.refresh_token_expires_in
+            expires: expiresDate
         })
     }
 
-    /**
-     * This method queues the requests and handles the SLAS token response.
-     *
-     * It returns the queue.
-     *
-     * @Internal
-     */
-    async queueRequest(fn: () => Promise<TokenResponse>, isGuest: boolean) {
-        const queue = this.pendingToken ?? Promise.resolve()
-        this.pendingToken = queue
-            .then(async () => {
-                const token = await fn()
-                this.handleTokenResponse(token, isGuest)
-                if (onClient() && this.OCAPISessionsURL) {
-                    void this.createOCAPISession()
-                }
-                // Q: Why don't we just return token? Why re-construct the same object again?
-                // A: because a user could open multiple tabs and the data in memory could be out-dated
-                // We must always grab the data from the storage (cookie/localstorage) directly
-                return this.data
-            })
-            .finally(() => {
-                this.pendingToken = undefined
-            })
-        return await this.pendingToken
-    }
-
-    logWarning = (msg: string) => {
-        if (!this.silenceWarnings) {
-            console.warn(msg)
-        }
-    }
-
-    /**
-     * The ready function returns a promise that resolves with valid ShopperLogin
-     * token response.
-     *
-     * When this method is called for the very first time, it initializes the session
-     * by following the public client auth flow to get access token for the user.
-     * The flow:
-     * 1. If we have valid access token - use it
-     * 2. If we have valid refresh token - refresh token flow
-     * 3. PKCE flow
-     */
-    async ready() {
-        if (this.fetchedToken && this.fetchedToken !== '') {
-            const {isGuest, customerId, usid} = this.parseSlasJWT(this.fetchedToken)
-            this.set('access_token', this.fetchedToken)
-            this.set('customer_id', customerId)
-            this.set('usid', usid)
-            this.set('customer_type', isGuest ? 'guest' : 'registered')
-            return this.data
-        }
-        if (this.pendingToken) {
-            return await this.pendingToken
-        }
-        const accessToken = this.getAccessToken()
-
-        if (accessToken && !this.isTokenExpired(accessToken)) {
-            return this.data
-        }
+    async refreshAccessToken() {
+        const dntPref = this.getDnt({includeDefaults: true})
         const refreshTokenRegistered = this.get('refresh_token_registered')
         const refreshTokenGuest = this.get('refresh_token_guest')
         const refreshToken = refreshTokenRegistered || refreshTokenGuest
@@ -445,7 +626,10 @@ class Auth {
                     () =>
                         helpers.refreshAccessToken(
                             this.client,
-                            {refreshToken},
+                            {
+                                refreshToken,
+                                dnt: dntPref
+                            },
                             {
                                 clientSecret: this.clientSecret
                             }
@@ -466,7 +650,128 @@ class Auth {
                 }
             }
         }
-        return this.loginGuestUser()
+
+        // refresh flow for TAOB
+        const accessToken = this.getAccessToken()
+        if (accessToken && this.isTokenExpired(accessToken)) {
+            try {
+                const {isGuest, usid, loginId, isAgent} = this.parseSlasJWT(accessToken)
+                if (isAgent) {
+                    return await this.queueRequest(
+                        () => this.refreshTrustedAgent(loginId, usid),
+                        isGuest
+                    )
+                }
+            } catch (e) {
+                /* catch invalid jwt */
+            }
+        }
+
+        // if a TAOB left a usid and it tries to
+        // use it, we will be stuck in a fail loop
+        let token
+        try {
+            token = await this.loginGuestUser()
+        } catch (e) {
+            this.clearStorage()
+            token = await this.loginGuestUser()
+        }
+        return token
+    }
+
+    /**
+     * This method queues the requests and handles the SLAS token response.
+     *
+     * It returns the queue.
+     *
+     * @Internal
+     */
+    async queueRequest(fn: () => Promise<TokenResponse>, isGuest: boolean) {
+        const queue = this.pendingToken ?? Promise.resolve()
+        this.pendingToken = queue
+            .then(async () => {
+                const token = await fn()
+                this.handleTokenResponse(token, isGuest)
+                // Q: Why don't we just return token? Why re-construct the same object again?
+                // A: because a user could open multiple tabs and the data in memory could be out-dated
+                // We must always grab the data from the storage (cookie/localstorage) directly
+                return this.data
+            })
+            .finally(() => {
+                this.pendingToken = undefined
+            })
+        return await this.pendingToken
+    }
+
+    logWarning = (msg: string) => {
+        if (!this.silenceWarnings) {
+            this.logger.warn(msg)
+        }
+    }
+
+    /**
+     * This method extracts the status and message from a ResponseError that is returned
+     * by commerce-sdk-isomorphic.
+     *
+     * commerce-sdk-isomorphic throws a `ResponseError`, but doesn't export the class.
+     * We can't use `instanceof`, so instead we just check for the `response` property
+     * and assume it is a `ResponseError` if a response is present
+     *
+     * Once commerce-sdk-isomorphic exports `ResponseError` we can revisit if this method is
+     * still required.
+     *
+     * @returns {status_code, responseMessage} contained within the ResponseError
+     * @throws error if the error is not a ResponseError
+     * @Internal
+     */
+    extractResponseError = async (error: Error) => {
+        // the regular error.message will return only the generic status code message
+        // ie. 'Bad Request' for 400. We need to drill specifically into the ResponseError
+        // to get a more descriptive error message from SLAS
+        if ('response' in error) {
+            const json = await (error['response'] as Response).json()
+            const status_code: string = json.status_code
+            const responseMessage: string = json.message
+
+            return {
+                status_code,
+                responseMessage
+            }
+        }
+        throw error
+    }
+
+    /**
+     * The ready function returns a promise that resolves with valid ShopperLogin
+     * token response.
+     *
+     * When this method is called for the very first time, it initializes the session
+     * by following the public client auth flow to get access token for the user.
+     * The flow:
+     * 1. If we have valid access token - use it
+     * 2. If we have valid refresh token - refresh token flow
+     * 3. If we have valid TAOB access token - refresh TAOB token flow
+     * 4. PKCE flow
+     */
+    async ready() {
+        if (this.fetchedToken && this.fetchedToken !== '') {
+            const {isGuest, customerId, usid} = this.parseSlasJWT(this.fetchedToken)
+            this.set('access_token', this.fetchedToken)
+            this.set('customer_id', customerId)
+            this.set('usid', usid)
+            this.set('customer_type', isGuest ? 'guest' : 'registered')
+            return this.data
+        }
+        if (this.pendingToken) {
+            return await this.pendingToken
+        }
+
+        const accessToken = this.getAccessToken()
+        if (accessToken && !this.isTokenExpired(accessToken)) {
+            return this.data
+        }
+
+        return await this.refreshAccessToken()
     }
 
     /**
@@ -492,21 +797,39 @@ class Auth {
             this.logWarning(SLAS_SECRET_WARNING_MSG)
         }
         const usid = this.get('usid')
+        const dntPref = this.getDnt({includeDefaults: true})
         const isGuest = true
         const guestPrivateArgs = [
             this.client,
-            {...(usid && {usid})},
+            {
+                dnt: dntPref,
+                ...(usid && {usid})
+            },
             {clientSecret: this.clientSecret}
         ] as const
         const guestPublicArgs = [
             this.client,
-            {redirectURI: this.redirectURI, ...(usid && {usid})}
+            {
+                redirectURI: this.redirectURI,
+                dnt: dntPref,
+                ...(usid && {usid})
+            }
         ] as const
         const callback = this.clientSecret
             ? () => helpers.loginGuestUserPrivate(...guestPrivateArgs)
             : () => helpers.loginGuestUser(...guestPublicArgs)
 
-        return await this.queueRequest(callback, isGuest)
+        try {
+            return await this.queueRequest(callback, isGuest)
+        } catch (error) {
+            // We catch the error here to do logging but we still need to
+            // throw an error to stop the login flow from continuing.
+            const {status_code, responseMessage} = await this.extractResponseError(error as Error)
+            this.logger.error(`${status_code} ${responseMessage}`)
+            throw new Error(
+                `New guest user could not be logged in. ${status_code} ${responseMessage}`
+            )
+        }
     }
 
     /**
@@ -543,12 +866,13 @@ class Auth {
      * A wrapper method for commerce-sdk-isomorphic helper: loginRegisteredUserB2C.
      *
      */
-    async loginRegisteredUserB2C(credentials: Parameters<Helpers['loginRegisteredUserB2C']>[1]) {
+    async loginRegisteredUserB2C(credentials: LoginRegisteredUserB2CCredentials) {
         if (this.clientSecret && onClient() && this.clientSecret !== SLAS_SECRET_PLACEHOLDER) {
             this.logWarning(SLAS_SECRET_WARNING_MSG)
         }
         const redirectURI = this.redirectURI
         const usid = this.get('usid')
+        const dntPref = this.getDnt({includeDefaults: true})
         const isGuest = false
         const token = await helpers.loginRegisteredUserB2C(
             this.client,
@@ -558,14 +882,122 @@ class Auth {
             },
             {
                 redirectURI,
+                dnt: dntPref,
                 ...(usid && {usid})
             }
         )
         this.handleTokenResponse(token, isGuest)
-        if (onClient() && this.OCAPISessionsURL) {
-            void this.createOCAPISession()
+        if (onClient()) {
+            void this.clearECOMSession()
         }
         return token
+    }
+
+    /**
+     * Trusted agent authorization
+     *
+     * @warning This method is not supported on the server, it is a client-only method.
+     */
+    async authorizeTrustedAgent(credentials: {loginId?: string}) {
+        const slasClient = this.client
+        const codeVerifier = helpers.createCodeVerifier()
+        const codeChallenge = await helpers.generateCodeChallenge(codeVerifier)
+        const organizationId = slasClient.clientConfig.parameters.organizationId
+        const clientId = slasClient.clientConfig.parameters.clientId
+        const siteId = slasClient.clientConfig.parameters.siteId
+        const loginId = credentials.loginId || 'guest'
+        const isGuest = loginId === 'guest'
+        const idpOrigin = isGuest ? 'slas' : 'ecom'
+
+        const url = `${
+            slasClient.clientConfig.proxy || ''
+        }/shopper/auth/v1/organizations/${organizationId}/oauth2/trusted-agent/authorize?${[
+            ...[
+                `client_id=${clientId}`,
+                `channel_id=${siteId}`,
+                `login_id=${loginId}`,
+                `redirect_uri=${this.redirectURI}`,
+                `idp_origin=${idpOrigin}`,
+                `response_type=code`
+            ],
+            ...(!this.clientSecret ? [`code_challenge=${codeChallenge}`] : [])
+        ].join('&')}`
+
+        return {url, codeVerifier}
+    }
+
+    /**
+     * Trusted agent login
+     *
+     * @warning This method is not supported on the server, it is a client-only method.
+     */
+    async loginTrustedAgent(credentials: {
+        loginId?: string
+        code: string
+        codeVerifier?: string
+        usid?: string
+        state?: string
+        clientSecret?: string
+    }) {
+        const slasClient = this.client
+        const loginId = credentials.loginId || 'guest'
+        const isGuest = loginId === 'guest'
+        const idpOrigin = isGuest ? 'slas' : 'ecom'
+
+        const optionsToken = {
+            headers: {
+                Authorization: `Bearer ${credentials.code}`
+            },
+            body: {
+                channel_id: slasClient.clientConfig.parameters.siteId,
+                grant_type: 'client_credentials',
+                redirect_uri: this.redirectURI,
+                login_id: loginId,
+                idp_origin: idpOrigin,
+                dnt: 'true',
+                ...(!this.clientSecret && {
+                    client_id: slasClient.clientConfig.parameters.clientId,
+                    code_verifier: credentials.codeVerifier
+                }),
+                ...(credentials.state && {state: credentials.state}),
+                ...(credentials.usid && {usid: credentials.usid})
+            }
+        } as {headers: {[key: string]: string}; body: TrustedAgentTokenRequest}
+
+        // using slas private client
+        if (credentials.clientSecret) {
+            optionsToken.headers._sfdc_client_auth = `Basic ${helpers.stringToBase64(
+                `${slasClient.clientConfig.parameters.clientId}:${credentials.clientSecret}`
+            )}`
+        }
+
+        const token = await slasClient.getTrustedAgentAccessToken(optionsToken)
+        this.handleTokenResponse(token, isGuest)
+
+        return token
+    }
+    /**
+     * Trusted agent refresh handler
+     *
+     * @warning This method is not supported on the server, it is a client-only method.
+     */
+    registerTrustedAgentRefreshHandler(
+        refreshTrustedAgentHandler: (
+            loginId?: string,
+            usid?: string,
+            refresh?: boolean
+        ) => Promise<TokenResponse>
+    ) {
+        this.refreshTrustedAgentHandler = refreshTrustedAgentHandler
+    }
+
+    async refreshTrustedAgent(loginId: string, usid: string): Promise<TokenResponse> {
+        if (this.refreshTrustedAgentHandler) {
+            return await this.refreshTrustedAgentHandler(loginId, usid, true)
+        }
+
+        this.clearStorage()
+        return await this.loginGuestUser()
     }
 
     /**
@@ -573,33 +1005,234 @@ class Auth {
      *
      */
     async logout() {
-        // Not awaiting on purpose because there isn't much we can do if this fails.
-        void helpers.logout(this.client, {
-            accessToken: this.get('access_token'),
-            refreshToken: this.get('refresh_token_registered')
-        })
+        if (this.get('customer_type') === 'registered') {
+            // Not awaiting on purpose because there isn't much we can do if this fails.
+            void helpers.logout(this.client, {
+                accessToken: this.get('access_token'),
+                refreshToken: this.get('refresh_token_registered')
+            })
+        }
         this.clearStorage()
-        return await this.loginGuestUser()
+        return await this.ready()
     }
 
     /**
-     * Make a post request to the OCAPI /session endpoint to bridge the session.
+     * Handle updating customer password and re-log in after the access token is invalidated.
      *
-     * The HTTP response contains a set-cookie header which sets the dwsid session cookie.
-     * This cookie is used on SFRA, and it allows shoppers to navigate between SFRA and
-     * this PWA site seamlessly; this is often used to enable hybrid deployment.
-     *
-     * (Note: this method is client side only, b/c MRT doesn't support set-cookie header right now)
-     *
-     * @returns {Promise}
      */
-    createOCAPISession() {
-        return fetch(this.OCAPISessionsURL, {
-            method: 'POST',
+    async updateCustomerPassword(body: {
+        customer: ShopperCustomersTypes.Customer
+        password: string
+        currentPassword: string
+        shouldReloginCurrentSession?: boolean
+    }) {
+        const {
+            customer: {customerId, login},
+            password,
+            currentPassword,
+            shouldReloginCurrentSession
+        } = body
+
+        // login and customerId are optional fields on the Customer type
+        // here we had to guard it to avoid ts error
+        if (!login || !customerId) {
+            throw new Error('Customer is missing required fields.')
+        }
+
+        const res = await this.shopperCustomersClient.updateCustomerPassword({
             headers: {
-                Authorization: 'Bearer ' + this.get('access_token')
+                authorization: `Bearer ${this.get('access_token')}`
+            },
+            parameters: {customerId},
+            body: {
+                password: password,
+                currentPassword: currentPassword
             }
         })
+
+        if (shouldReloginCurrentSession) {
+            await this.loginRegisteredUserB2C({
+                username: login,
+                password
+            })
+        }
+        return res
+    }
+
+    /**
+     * A wrapper method for commerce-sdk-isomorphic helper: authorizeIDP.
+     *
+     */
+    async authorizeIDP(parameters: AuthorizeIDPParams) {
+        const redirectURI = parameters.redirectURI || this.redirectURI
+        const usid = this.get('usid')
+        const {url, codeVerifier} = await helpers.authorizeIDP(
+            this.client,
+            {
+                redirectURI,
+                hint: parameters.hint,
+                ...(usid && {usid})
+            },
+            this.isPrivate
+        )
+
+        if (onClient()) {
+            window.location.assign(url)
+        } else {
+            console.warn('Something went wrong, this client side method is invoked on the server.')
+        }
+        this.set('code_verifier', codeVerifier)
+    }
+
+    /**
+     * A wrapper method for commerce-sdk-isomorphic helper: loginIDPUser.
+     *
+     */
+    async loginIDPUser(parameters: LoginIDPUserParams) {
+        const codeVerifier = this.get('code_verifier')
+        const code = parameters.code
+        const usid = parameters.usid || this.get('usid')
+        const redirectURI = parameters.redirectURI || this.redirectURI
+        const dntPref = this.getDnt({includeDefaults: true})
+
+        const token = await helpers.loginIDPUser(
+            this.client,
+            {
+                codeVerifier,
+                clientSecret: this.clientSecret
+            },
+            {
+                redirectURI,
+                code,
+                dnt: dntPref,
+                ...(usid && {usid})
+            }
+        )
+        const isGuest = false
+        this.handleTokenResponse(token, isGuest)
+        // Delete the code verifier once the user has logged in
+        this.delete('code_verifier')
+        if (onClient()) {
+            void this.clearECOMSession()
+        }
+        return token
+    }
+
+    /**
+     * A wrapper method for commerce-sdk-isomorphic helper: authorizePasswordless.
+     */
+    async authorizePasswordless(parameters: AuthorizePasswordlessParams) {
+        const userid = parameters.userid
+        const callbackURI = parameters.callbackURI || this.passwordlessLoginCallbackURI
+        const usid = this.get('usid')
+        const mode = callbackURI ? 'callback' : 'sms'
+
+        const res = await helpers.authorizePasswordless(
+            this.client,
+            {
+                clientSecret: this.clientSecret
+            },
+            {
+                ...(callbackURI && {callbackURI: callbackURI}),
+                ...(usid && {usid}),
+                userid,
+                mode
+            }
+        )
+        if (res && res.status !== 200) {
+            const errorData = await res.json()
+            throw new Error(`${res.status} ${String(errorData.message)}`)
+        }
+        return res
+    }
+
+    /**
+     * A wrapper method for commerce-sdk-isomorphic helper: getPasswordLessAccessToken.
+     */
+    async getPasswordLessAccessToken(parameters: LoginPasswordlessParams) {
+        const pwdlessLoginToken = parameters.pwdlessLoginToken
+        const dntPref = this.getDnt({includeDefaults: true})
+        const token = await helpers.getPasswordLessAccessToken(
+            this.client,
+            {
+                clientSecret: this.clientSecret
+            },
+            {
+                pwdlessLoginToken,
+                dnt: dntPref !== undefined ? String(dntPref) : undefined
+            }
+        )
+        const isGuest = false
+        this.handleTokenResponse(token, isGuest)
+        if (onClient()) {
+            void this.clearECOMSession()
+        }
+        return token
+    }
+
+    /**
+     * A wrapper method for the SLAS endpoint: getPasswordResetToken.
+     *
+     */
+    async getPasswordResetToken(parameters: ShopperLoginTypes.PasswordActionRequest) {
+        const slasClient = this.client
+        const callbackURI = parameters.callback_uri
+
+        const options = {
+            headers: {
+                Authorization: ''
+            },
+            body: {
+                user_id: parameters.user_id,
+                mode: 'callback',
+                channel_id: slasClient.clientConfig.parameters.siteId,
+                client_id: slasClient.clientConfig.parameters.clientId,
+                callback_uri: callbackURI,
+                hint: 'cross_device'
+            }
+        }
+
+        // Only set authorization header if using private client
+        if (this.clientSecret) {
+            options.headers.Authorization = `Basic ${stringToBase64(
+                `${slasClient.clientConfig.parameters.clientId}:${this.clientSecret}`
+            )}`
+        }
+
+        const res = await slasClient.getPasswordResetToken(options)
+        return res
+    }
+
+    /**
+     * A wrapper method for the SLAS endpoint: resetPassword.
+     *
+     */
+    async resetPassword(parameters: ShopperLoginTypes.PasswordActionVerifyRequest) {
+        const slasClient = this.client
+        const options = {
+            headers: {
+                Authorization: ''
+            },
+            body: {
+                pwd_action_token: parameters.pwd_action_token,
+                channel_id: slasClient.clientConfig.parameters.siteId,
+                client_id: slasClient.clientConfig.parameters.clientId,
+                new_password: parameters.new_password,
+                user_id: parameters.user_id
+            }
+        }
+
+        // Only set authorization header if using private client
+        if (this.clientSecret) {
+            options.headers.Authorization = `Basic ${stringToBase64(
+                `${slasClient.clientConfig.parameters.clientId}:${this.clientSecret}`
+            )}`
+        }
+        // TODO: no code verifier needed with the fix blair has made, delete this when the fix has been merged to production
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        const res = await this.client.resetPassword(options)
+        return res
     }
 
     /**
@@ -608,7 +1241,7 @@ class Auth {
      */
     parseSlasJWT(jwt: string) {
         const payload: SlasJwtPayload = jwtDecode(jwt)
-        const {sub, isb} = payload
+        const {sub, isb, dnt} = payload
 
         if (!sub || !isb) {
             throw new Error('Unable to parse access token payload: missing sub and isb.')
@@ -617,17 +1250,29 @@ class Auth {
         // ISB format
         // 'uido:ecom::upn:Guest||xxxEmailxxx::uidn:FirstName LastName::gcid:xxxGuestCustomerIdxxx::rcid:xxxRegisteredCustomerIdxxx::chid:xxxSiteIdxxx',
         const isbParts = isb.split('::')
+        const uido = isbParts[0].split('uido:')[1]
         const isGuest = isbParts[1] === 'upn:Guest'
         const customerId = isGuest
             ? isbParts[3].replace('gcid:', '')
             : isbParts[4].replace('rcid:', '')
+
+        const loginId = isGuest ? 'guest' : isbParts[1].replace('upn:', '')
+
+        const isAgent = !!isbParts?.[isGuest ? 5 : 6]?.startsWith('agent:')
+        const agentId = isAgent ? isbParts?.[isGuest ? 5 : 6]?.replace('agent:', '') : null
+
         // SUB format
         // cc-slas::zzrf_001::scid:c9c45bfd-0ed3-4aa2-xxxx-40f88962b836::usid:b4865233-de92-4039-xxxx-aa2dfc8c1ea5
         const usid = sub.split('::')[3].replace('usid:', '')
         return {
             isGuest,
             customerId,
-            usid
+            usid,
+            dnt,
+            loginId,
+            isAgent,
+            agentId,
+            uido
         }
     }
 }

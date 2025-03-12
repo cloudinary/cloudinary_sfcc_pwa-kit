@@ -14,8 +14,9 @@ import {Icon, useTheme} from '@salesforce/retail-react-app/app/components/shared
 // during SSR.
 // NOTE: Another solution would be to use `require-context.macro` package to accomplish
 // importing icon svg's.
-import '@salesforce/retail-react-app/app/assets/svg/alert.svg'
 import '@salesforce/retail-react-app/app/assets/svg/account.svg'
+import '@salesforce/retail-react-app/app/assets/svg/alert.svg'
+import '@salesforce/retail-react-app/app/assets/svg/apple.svg'
 import '@salesforce/retail-react-app/app/assets/svg/basket.svg'
 import '@salesforce/retail-react-app/app/assets/svg/check.svg'
 import '@salesforce/retail-react-app/app/assets/svg/check-circle.svg'
@@ -37,12 +38,14 @@ import '@salesforce/retail-react-app/app/assets/svg/flag-it.svg'
 import '@salesforce/retail-react-app/app/assets/svg/flag-cn.svg'
 import '@salesforce/retail-react-app/app/assets/svg/flag-jp.svg'
 import '@salesforce/retail-react-app/app/assets/svg/github-logo.svg'
+import '@salesforce/retail-react-app/app/assets/svg/google.svg'
 import '@salesforce/retail-react-app/app/assets/svg/hamburger.svg'
 import '@salesforce/retail-react-app/app/assets/svg/info.svg'
 import '@salesforce/retail-react-app/app/assets/svg/social-facebook.svg'
 import '@salesforce/retail-react-app/app/assets/svg/social-instagram.svg'
 import '@salesforce/retail-react-app/app/assets/svg/social-twitter.svg'
 import '@salesforce/retail-react-app/app/assets/svg/social-youtube.svg'
+import '@salesforce/retail-react-app/app/assets/svg/store.svg'
 import '@salesforce/retail-react-app/app/assets/svg/like.svg'
 import '@salesforce/retail-react-app/app/assets/svg/lock.svg'
 import '@salesforce/retail-react-app/app/assets/svg/plug.svg'
@@ -136,9 +139,10 @@ export const icon = (name, passProps, localizationAttributes) => {
 // Export Chakra icon components that use our SVG sprite symbol internally
 // For non-square SVGs, we can use the symbol data from the import to set the
 // proper viewBox attribute on the Icon wrapper.
-export const AmexIcon = icon('cc-amex', {viewBox: AmexSymbol.viewBox})
-export const AlertIcon = icon('alert')
 export const AccountIcon = icon('account')
+export const AlertIcon = icon('alert')
+export const AmexIcon = icon('cc-amex', {viewBox: AmexSymbol.viewBox})
+export const AppleIcon = icon('apple')
 export const BrandLogo = icon('brand-logo', {viewBox: BrandLogoSymbol.viewBox})
 export const BasketIcon = icon('basket')
 export const CheckIcon = icon('check')
@@ -148,6 +152,7 @@ export const ChevronLeftIcon = icon('chevron-left')
 export const ChevronRightIcon = icon('chevron-right')
 export const ChevronUpIcon = icon('chevron-up')
 export const CVVIcon = icon('cc-cvv', {viewBox: CVVSymbol.viewBox})
+export const CloseIcon = icon('close')
 export const DashboardIcon = icon('dashboard')
 export const DiscoverIcon = icon('cc-discover', {viewBox: DiscoverSymbol.viewBox})
 export const FigmaLogo = icon('figma-logo')
@@ -161,7 +166,10 @@ export const FlagITIcon = icon('flag-it')
 export const FlagCNIcon = icon('flag-cn')
 export const FlagJPIcon = icon('flag-jp')
 export const GithubLogo = icon('github-logo')
+export const GoogleIcon = icon('google')
 export const HamburgerIcon = icon('hamburger')
+export const HeartIcon = icon('heart')
+export const HeartSolidIcon = icon('heart-solid')
 export const InfoIcon = icon('info')
 export const LikeIcon = icon('like')
 export const LockIcon = icon(
@@ -183,7 +191,7 @@ export const PlugIcon = icon('plug')
 export const PlusIcon = icon('plus')
 export const MastercardIcon = icon('cc-mastercard', {viewBox: MastercardSymbol.viewBox})
 export const ReceiptIcon = icon('receipt')
-export const SearchIcon = icon('search')
+export const SearchIcon = icon('search', {'aria-hidden': true})
 export const SocialFacebookIcon = icon('social-facebook')
 export const SocialInstagramIcon = icon('social-instagram')
 export const SocialPinterestIcon = icon('social-pinterest', {
@@ -191,11 +199,9 @@ export const SocialPinterestIcon = icon('social-pinterest', {
 })
 export const SocialTwitterIcon = icon('social-twitter')
 export const SocialYoutubeIcon = icon('social-youtube')
+export const StoreIcon = icon('store')
 export const SignoutIcon = icon('signout')
 export const UserIcon = icon('user')
 export const VisaIcon = icon('cc-visa', {viewBox: VisaSymbol.viewBox})
 export const VisibilityIcon = icon('visibility')
 export const VisibilityOffIcon = icon('visibility-off')
-export const HeartIcon = icon('heart')
-export const HeartSolidIcon = icon('heart-solid')
-export const CloseIcon = icon('close')

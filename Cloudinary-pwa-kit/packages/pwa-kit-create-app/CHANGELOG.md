@@ -1,7 +1,27 @@
-## v3.5.0-dev (Jan 22, 2024)
-## v3.4.0 (Jan 19, 2024)
+## v3.9.0-dev (Oct 29, 2024)
+- Support Node 22 [#2218](https://github.com/SalesforceCommerceCloud/pwa-kit/pull/2218)
+- Update `default.js` template to include new login configurations [#2079] (https://github.com/SalesforceCommerceCloud/pwa-kit/pull/2079)
+
+## v3.8.0 (Oct 28, 2024)
+
+- Removed OCAPISessionURL prop from provider template. [#2090](https://github.com/SalesforceCommerceCloud/pwa-kit/pull/2090)
+- Update ssr.js templates to include new feature flag to encode non ASCII HTTP headers [#2048](https://github.com/SalesforceCommerceCloud/pwa-kit/pull/2048)
+- Replace getAppOrigin with useOrigin to have a better support for an app origin building. [#2050](https://github.com/SalesforceCommerceCloud/pwa-kit/pull/2050)
+
+## v3.7.0 (Aug 7, 2024)
+
+- Update default Node.js version to v20. [#1867](https://github.com/SalesforceCommerceCloud/pwa-kit/pull/1867/files)
+
+## v3.6.0 (Jun 25, 2024)
+
+- Fix: 'Cannot use import statement outside a module' error in generated extensible project unit tests [#1821](https://github.com/SalesforceCommerceCloud/pwa-kit/pull/1821)
+
+## v3.5.1 (Apr 15, 2024)
 
 - Add Support for SLAS private flow [#1722](https://github.com/SalesforceCommerceCloud/pwa-kit/pull/1722)
+
+## v3.4.0 (Jan 19, 2024)
+
 - Add local development support for node 20 [#1612](https://github.com/SalesforceCommerceCloud/pwa-kit/pull/1612)
   - Support for node 20 is not yet available on Managed Runtime
 

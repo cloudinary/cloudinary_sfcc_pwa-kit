@@ -164,7 +164,7 @@ export const mockedRegisteredCustomer = {
                 cardType: 'Master Card',
                 creditCardExpired: false,
                 expirationMonth: 1,
-                expirationYear: 2030,
+                expirationYear: 2040,
                 holder: 'Test McTester',
                 maskedNumber: '************5454',
                 numberLastDigits: '5454',
@@ -192,6 +192,45 @@ export const mockedRegisteredCustomerWithNoAddress = {
     firstName: 'Testing',
     lastName: 'Tester',
     phoneHome: '(727) 555-1234',
+    lastVisitTime: '2021-04-14T13:38:29.778Z',
+    login: 'customer@test.com',
+    paymentInstruments: [
+        {
+            creationDate: '2021-04-01T14:34:56.000Z',
+            lastModified: '2021-04-01T14:34:56.000Z',
+            paymentBankAccount: {},
+            paymentCard: {
+                cardType: 'Master Card',
+                creditCardExpired: false,
+                expirationMonth: 1,
+                expirationYear: 2040,
+                holder: 'Test McTester',
+                maskedNumber: '************5454',
+                numberLastDigits: '5454',
+                validFromMonth: 1,
+                validFromYear: 2020
+            },
+            paymentInstrumentId: 'testcard1',
+            paymentMethodId: 'CREDIT_CARD'
+        }
+    ],
+    previousLoginTime: '2021-04-14T13:38:29.778Z',
+    previousVisitTime: '2021-04-14T13:38:29.778Z'
+}
+
+export const mockedRegisteredCustomerWithNoNumber = {
+    addresses: [],
+    authType: 'registered',
+    creationDate: '2021-03-31T13:32:42.000Z',
+    customerId: 'customerid',
+    customerNo: '00149004',
+    email: 'customer@test.com',
+    enabled: true,
+    lastLoginTime: '2021-04-14T13:38:29.778Z',
+    lastModified: '2021-04-14T13:38:29.778Z',
+    firstName: 'Testing',
+    lastName: 'Tester',
+    phoneHome: '',
     lastVisitTime: '2021-04-14T13:38:29.778Z',
     login: 'customer@test.com',
     paymentInstruments: [
@@ -826,7 +865,7 @@ export const mockOrderHistory = {
                         cardType: 'Visa',
                         creditCardExpired: false,
                         expirationMonth: 1,
-                        expirationYear: 2030,
+                        expirationYear: 2040,
                         holder: 'tester testing',
                         maskedNumber: '************1111',
                         numberLastDigits: '1111',
@@ -978,7 +1017,7 @@ export const mockOrderHistory = {
                         cardType: 'Master Card',
                         creditCardExpired: false,
                         expirationMonth: 1,
-                        expirationYear: 2030,
+                        expirationYear: 2040,
                         holder: 'tester testing',
                         maskedNumber: '************5454',
                         numberLastDigits: '5454',
@@ -1130,7 +1169,7 @@ export const mockOrderHistory = {
                         cardType: 'Master Card',
                         creditCardExpired: false,
                         expirationMonth: 1,
-                        expirationYear: 2030,
+                        expirationYear: 2040,
                         holder: 'tester testing',
                         maskedNumber: '************5454',
                         numberLastDigits: '5454',
@@ -2585,6 +2624,7 @@ export const mockProductSearch = {
                     id: '701644042615M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -2677,6 +2717,7 @@ export const mockProductSearch = {
                     id: '701643458486M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -2765,6 +2806,7 @@ export const mockProductSearch = {
                     id: '701644068363M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -2863,6 +2905,7 @@ export const mockProductSearch = {
                     id: '701643370795M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -2961,6 +3004,7 @@ export const mockProductSearch = {
                     id: '701643415441M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -3019,6 +3063,7 @@ export const mockProductSearch = {
         {
             currency: 'USD',
             hitType: 'master',
+            productId: '25589411M',
             image: {
                 alt: 'Trouser Leg Pant, , large',
                 disBaseLink:
@@ -3055,6 +3100,7 @@ export const mockProductSearch = {
                     id: '701642867739M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -3147,6 +3193,7 @@ export const mockProductSearch = {
                     id: '701643636341M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -3229,6 +3276,7 @@ export const mockProductSearch = {
                     id: '701644025199M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -3317,6 +3365,7 @@ export const mockProductSearch = {
                     id: '609717696058M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -3406,6 +3455,7 @@ export const mockProductSearch = {
                     id: '701644443078M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -3483,6 +3533,7 @@ export const mockProductSearch = {
                     id: '701643409730M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -3559,6 +3610,7 @@ export const mockProductSearch = {
                     id: '701644067007M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -3597,6 +3649,7 @@ export const mockProductSearch = {
         {
             currency: 'USD',
             hitType: 'master',
+            productId: '25586795M',
             image: {
                 alt: 'Pleated Skirt With Embroidery., , large',
                 disBaseLink:
@@ -3633,6 +3686,7 @@ export const mockProductSearch = {
                     id: '701644335403M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -3731,6 +3785,7 @@ export const mockProductSearch = {
                     id: '701644389390M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -3829,6 +3884,7 @@ export const mockProductSearch = {
                     id: '701642884316M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -3918,6 +3974,7 @@ export const mockProductSearch = {
                     id: '701643037605M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -3998,6 +4055,7 @@ export const mockProductSearch = {
                     id: '701642853091M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -4091,6 +4149,7 @@ export const mockProductSearch = {
                     id: '701644334888M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -4189,6 +4248,7 @@ export const mockProductSearch = {
                     id: '701644390969M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -4287,6 +4347,7 @@ export const mockProductSearch = {
                     id: '701641312872M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -4385,6 +4446,7 @@ export const mockProductSearch = {
                     id: '701643422135M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -4468,6 +4530,7 @@ export const mockProductSearch = {
                     id: '701643408177M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -4541,6 +4604,7 @@ export const mockProductSearch = {
                     id: '701643632923M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -4639,6 +4703,7 @@ export const mockProductSearch = {
                     id: '701643317851M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',
@@ -4738,6 +4803,7 @@ export const mockProductSearch = {
                     id: '609717701486M'
                 }
             ],
+            variants: [],
             variationAttributes: [
                 {
                     id: 'color',

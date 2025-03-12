@@ -1,6 +1,6 @@
 {
-  "name": "Cloudinary PWA Kit",
-  "short_name": "cloudinary-pwa-kit",
+  "name": "retail-react-app-demo",
+  "short_name": "retail-react-app-demo",
   "start_url": "/?homescreen=1",
   "background_color": "#fff",
   "theme_color": "#4e439b",

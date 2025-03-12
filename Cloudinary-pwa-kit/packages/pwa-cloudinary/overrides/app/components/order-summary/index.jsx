@@ -4,35 +4,44 @@
  * SPDX-License-Identifier: BSD-3-Clause
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
-import React, {useState, useEffect} from 'react'
+import React, { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
-import {FormattedMessage, FormattedNumber} from 'react-intl'
-import {Box, Flex, Button, Stack, Text, Heading, Divider} from '@chakra-ui/react'
+import { FormattedMessage, FormattedNumber } from 'react-intl'
 import {
-    BasketIcon,
-    ChevronDownIcon,
-    ChevronUpIcon
-} from '@salesforce/retail-react-app/app/components/icons'
+    Box,
+    Flex,
+    Button,
+    Stack,
+    Text,
+    Heading,
+    Divider,
+    Accordion,
+    AccordionIcon,
+    AccordionItem,
+    AccordionButton,
+    AccordionPanel
+} from '@salesforce/retail-react-app/app/components/shared/ui'
 import Link from '@salesforce/retail-react-app/app/components/link'
-import {PromoCode, usePromoCode} from '@salesforce/retail-react-app/app/components/promo-code'
+import { PromoCode, usePromoCode } from '@salesforce/retail-react-app/app/components/promo-code'
 import ItemVariantProvider from '@salesforce/retail-react-app/app/components/item-variant'
 import CartItemVariantImage from '@salesforce/retail-react-app/app/components/item-variant/item-image'
 import CartItemVariantName from '@salesforce/retail-react-app/app/components/item-variant/item-name'
 import CartItemVariantAttributes from '@salesforce/retail-react-app/app/components/item-variant/item-attributes'
 import CartItemVariantPrice from '@salesforce/retail-react-app/app/components/item-variant/item-price'
 import PromoPopover from '@salesforce/retail-react-app/app/components/promo-popover'
-import {useProducts} from '@salesforce/commerce-sdk-react'
+import { useProducts } from '@salesforce/commerce-sdk-react'
+import { BasketIcon } from '@salesforce/retail-react-app/app/components/icons'
 
 // Cloudinary Component to Render CLD images on Checkout
 import CldCartItemVariantImage from '../../../../app/components/cloudinary-item-image'
 
-const CartItems = ({basket}) => {
-    {/** Cloudinary Custom Code Starts */ }
-    const [checkoutEnabled, setCheckoutEnabled] = useState(false)
-    {/** Cloudinary Custom Code Ends */ }
+const CartItems = ({ basket }) => {
+{/** Cloudinary Custom Code Starts */ }
+const [checkoutEnabled, setCheckoutEnabled] = useState(false)
+{/** Cloudinary Custom Code Ends */ }
     const totalItems = basket?.productItems?.reduce((acc, item) => acc + item.quantity, 0) || 0
-    const productIds = basket?.productItems?.map(({productId}) => productId).join(',') ?? ''
-    const {data: products} = useProducts(
+    const productIds = basket?.productItems?.map(({ productId }) => productId).join(',') ?? ''
+    const { data: products } = useProducts(
         {
             parameters: {
                 ids: productIds,
@@ -52,9 +61,7 @@ const CartItems = ({basket}) => {
         }
     )
 
-    const [cartItemsExpanded, setCartItemsExpanded] = useState(false)
-
-    {/** Cloudinary Custom Code Starts */}
+    {/** Cloudinary Custom Code Starts */ }
     useEffect(() => {
         if (products) {
             Object.keys(products).map((key) => {
@@ -62,70 +69,71 @@ const CartItems = ({basket}) => {
             })
         }
     }, [products])
-    {/** Cloudinary Custom Code Ends */}
+    {/** Cloudinary Custom Code Ends */ }
 
     return (
-        <Stack spacing={5} width="full">
-            <Box>
-                <Button
-                    variant="link"
-                    leftIcon={<BasketIcon boxSize="22px" />}
-                    rightIcon={cartItemsExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
-                    onClick={() => setCartItemsExpanded(!cartItemsExpanded)}
-                >
-                    <FormattedMessage
-                        id="order_summary.cart_items.action.num_of_items_in_cart"
-                        description="clicking it would expand/show the items in cart"
-                        defaultMessage="{itemCount, plural, =0 {0 items} one {# item} other {# items}} in cart"
-                        values={{itemCount: totalItems}}
-                    />
-                </Button>
-            </Box>
+        <Accordion allowToggle={true} width="100%">
+            <AccordionItem style={{ border: 0 }}>
+                <AccordionButton color="blue.700">
+                    <BasketIcon aria-hidden={true} />
+                    <Box px={2}>
+                        <FormattedMessage
+                            id="order_summary.cart_items.action.num_of_items_in_cart"
+                            description="clicking it would expand/show the items in cart"
+                            defaultMessage="{itemCount, plural, =0 {0 items} one {# item} other {# items}} in cart"
+                            values={{ itemCount: totalItems }}
+                        />
+                    </Box>
+                    <AccordionIcon />
+                </AccordionButton>
+                <AccordionPanel px={0} py={4}>
+                    <Stack spacing={5} align="flex-start" divider={<Divider />}>
+                        {basket.productItems?.map((product, idx) => {
+                            const variant = {
+                                ...product,
+                                ...(products && products[product.productId]),
+                                price: product.price
+                            }
+                            return (
+                                <ItemVariantProvider
+                                    key={product.productId}
+                                    index={idx}
+                                    variant={variant}
+                                >
+                                    <Flex width="full" alignItems="flex-start">
 
-            {cartItemsExpanded && (
-                <Stack spacing={5} align="flex-start" divider={<Divider />}>
-                    {basket.productItems?.map((product, idx) => {
-                        const variant = {
-                            ...product,
-                            ...(products && products[product.productId]),
-                            price: product.price
-                        }
-                        return (
-                            <ItemVariantProvider
-                                key={product.productId}
-                                index={idx}
-                                variant={variant}
-                            >
-                                <Flex width="full" alignItems="flex-start">
-
-                                    {/** Cloudinary Custom Code Starts */}
-                                    {checkoutEnabled ? (
+                                        {/** Cloudinary Custom Code Starts */}
+                                        {checkoutEnabled ? (
                                             <CldCartItemVariantImage pageType={'checkoutImage'} width={['88px', '136px']} mr={4} />
                                         ) : (
-                                            <CartItemVariantImage width={['88px', '136px']} mr={4} />
+                                            <CartItemVariantImage width="80px" mr={2} />
                                         )
-                                    }
-                                    {/** Cloudinary Custom Code Ends */}
+                                        }
+                                        {/** Cloudinary Custom Code Ends */}
 
-                                    <Stack width="full" spacing={1} marginTop="-3px">
-                                        <CartItemVariantName />
-                                        <CartItemVariantAttributes includeQuantity />
-                                        <CartItemVariantPrice baseDirection="row" />
-                                    </Stack>
-                                </Flex>
-                            </ItemVariantProvider>
-                        )
-                    })}
+                                        <Stack width="full" spacing={1} marginTop="-3px">
+                                            <CartItemVariantName />
+                                            <CartItemVariantAttributes includeQuantity />
+                                            <CartItemVariantPrice
+                                                baseDirection="row"
+                                                currency={basket?.currency}
+                                            />
+                                        </Stack>
+                                    </Flex>
+                                </ItemVariantProvider>
+                            )
+                        })}
 
-                    <Button as={Link} to="/cart" variant="link" width="full">
-                        <FormattedMessage
-                            defaultMessage="Edit cart"
-                            id="order_summary.cart_items.link.edit_cart"
-                        />
-                    </Button>
-                </Stack>
-            )}
-        </Stack>
+                        <Button as={Link} to="/cart" variant="link" width="full" color="blue.700">
+                            <FormattedMessage
+                                defaultMessage="Edit cart"
+                                id="order_summary.cart_items.link.edit_cart"
+                            />
+                        </Button>
+                    </Stack>
+                </AccordionPanel>
+            </AccordionItem>
+        </Accordion>
     )
 }
 
@@ -140,7 +148,7 @@ const OrderSummary = ({
     isEstimate = false,
     fontSize = 'md'
 }) => {
-    const {removePromoCode, ...promoCodeProps} = usePromoCode()
+    const { removePromoCode, ...promoCodeProps } = usePromoCode()
 
     if (!basket?.basketId && !basket?.orderNo) {
         return null
@@ -150,18 +158,23 @@ const OrderSummary = ({
 
     return (
         <Stack data-testid="sf-order-summary" spacing={5}>
-            <Heading fontSize={fontSize} pt={1}>
+            <Heading fontSize={fontSize} pt={1} id="order-summary-heading">
                 <FormattedMessage
                     defaultMessage="Order Summary"
                     id="order_summary.heading.order_summary"
                 />
             </Heading>
 
-            <Stack spacing={4} align="flex-start">
+            <Stack
+                spacing={4}
+                align="flex-start"
+                role="region"
+                aria-labelledby="order-summary-heading"
+            >
                 {showCartItems && <CartItems basket={basket} />}
 
                 <Stack w="full">
-                    <Flex justify="space-between">
+                    <Flex justify="space-between" aria-live="polite" aria-atomic="true">
                         <Text fontWeight="bold" fontSize={fontSize}>
                             <FormattedMessage
                                 defaultMessage="Subtotal"
@@ -178,9 +191,14 @@ const OrderSummary = ({
                     </Flex>
 
                     {basket.orderPriceAdjustments?.map((adjustment) => (
-                        <Flex justify="space-between" key={adjustment.priceAdjustmentId}>
+                        <Flex
+                            justify="space-between"
+                            key={adjustment.priceAdjustmentId}
+                            aria-live="polite"
+                            aria-atomic="true"
+                        >
                             <Text fontSize={fontSize}>{adjustment.itemText}</Text>
-                            <Text color="green.500" fontSize={fontSize}>
+                            <Text color="green.600" fontSize={fontSize}>
                                 <FormattedNumber
                                     style="currency"
                                     currency={basket?.currency}
@@ -190,7 +208,7 @@ const OrderSummary = ({
                         </Flex>
                     ))}
 
-                    <Flex justify="space-between">
+                    <Flex justify="space-between" aria-live="polite" aria-atomic="true">
                         <Flex alignItems="center">
                             <Text lineHeight={1} fontSize={fontSize}>
                                 <FormattedMessage
@@ -222,11 +240,11 @@ const OrderSummary = ({
                         </Flex>
 
                         {shippingItem?.priceAdjustments?.some(
-                            ({appliedDiscount}) => appliedDiscount?.type === 'free'
+                            ({ appliedDiscount }) => appliedDiscount?.type === 'free'
                         ) ? (
                             <Text
                                 as="span"
-                                color="green.500"
+                                color="green.700"
                                 textTransform="uppercase"
                                 fontSize={fontSize}
                             >
@@ -246,7 +264,7 @@ const OrderSummary = ({
                         )}
                     </Flex>
 
-                    <Flex justify="space-between">
+                    <Flex justify="space-between" aria-live="polite" aria-atomic="true">
                         <Text fontSize={fontSize}>
                             <FormattedMessage defaultMessage="Tax" id="order_summary.label.tax" />
                         </Text>
@@ -275,7 +293,7 @@ const OrderSummary = ({
                 )}
 
                 <Stack spacing={4} w="full">
-                    <Flex w="full" justify="space-between">
+                    <Flex w="full" justify="space-between" aria-live="polite" aria-atomic="true">
                         {isEstimate ? (
                             <Text fontWeight="bold" fontSize={fontSize}>
                                 <FormattedMessage

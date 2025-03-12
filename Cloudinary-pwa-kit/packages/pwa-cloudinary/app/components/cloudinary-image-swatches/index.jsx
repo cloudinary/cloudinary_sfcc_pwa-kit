@@ -7,7 +7,7 @@ import { cloudinary } from '../../../config/default'
  * The swatch images displays The Swatch Images Coming from Cloudinary in Product-Detail Page.
  */
 const CloudinaryImageSwatches = ({ cloudinaryImageGallery = {}, image = {}, value }) => {
-    cloudinaryImageGallery.cldSwatchs.map((cldSwatch) => {
+    cloudinaryImageGallery.cldSwatches.map((cldSwatch) => {
         const { variationAttrValueID, cldUrl } = cldSwatch
         if (value === variationAttrValueID) {
             image.disBaseLink = cldUrl.lastIndexOf('?') > -1 ? cldUrl.substring(0, cldUrl.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : cldUrl + cloudinary.CLD_TRACKING_PARAM

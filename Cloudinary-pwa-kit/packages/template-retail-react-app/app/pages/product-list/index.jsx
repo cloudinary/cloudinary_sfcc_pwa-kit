@@ -25,6 +25,7 @@ import {
     SimpleGrid,
     Grid,
     Select,
+    Heading,
     Text,
     FormControl,
     Stack,
@@ -52,10 +53,12 @@ import ProductTile, {
 } from '@salesforce/retail-react-app/app/components/product-tile'
 import {HideOnDesktop} from '@salesforce/retail-react-app/app/components/responsive'
 import Refinements from '@salesforce/retail-react-app/app/pages/product-list/partials/refinements'
+import CategoryLinks from '@salesforce/retail-react-app/app/pages/product-list/partials/category-links'
 import SelectedRefinements from '@salesforce/retail-react-app/app/pages/product-list/partials/selected-refinements'
 import EmptySearchResults from '@salesforce/retail-react-app/app/pages/product-list/partials/empty-results'
 import PageHeader from '@salesforce/retail-react-app/app/pages/product-list/partials/page-header'
 import AbovePageHeader from '@salesforce/retail-react-app/app/pages/product-list/partials/above-page-header'
+import PageDesignerPromotionalBanner from '@salesforce/retail-react-app/app/pages/product-list/partials/page-designer-promotional-banner'
 
 // Icons
 import {FilterIcon, ChevronDownIcon} from '@salesforce/retail-react-app/app/components/icons'
@@ -73,6 +76,7 @@ import useActiveData from '@salesforce/retail-react-app/app/hooks/use-active-dat
 
 // Others
 import {HTTPNotFound, HTTPError} from '@salesforce/pwa-kit-react-sdk/ssr/universal/errors'
+import logger from '@salesforce/retail-react-app/app/utils/logger-instance'
 
 // Constants
 import {
@@ -81,7 +85,10 @@ import {
     MAX_CACHE_AGE,
     TOAST_ACTION_VIEW_WISHLIST,
     TOAST_MESSAGE_ADDED_TO_WISHLIST,
-    TOAST_MESSAGE_REMOVED_FROM_WISHLIST
+    TOAST_MESSAGE_REMOVED_FROM_WISHLIST,
+    STALE_WHILE_REVALIDATE,
+    PRODUCT_LIST_IMAGE_VIEW_TYPE,
+    PRODUCT_LIST_SELECTABLE_ATTRIBUTE_ID
 } from '@salesforce/retail-react-app/app/constants'
 import useNavigation from '@salesforce/retail-react-app/app/hooks/use-navigation'
 import LoadingSpinner from '@salesforce/retail-react-app/app/components/loading-spinner'
@@ -142,12 +149,24 @@ const ProductList = (props) => {
 
     const {
         isLoading,
+        isFetched,
         isRefetching,
         data: productSearchResult
     } = useProductSearch(
         {
             parameters: {
                 ...restOfParams,
+                perPricebook: true,
+                allVariationProperties: true,
+                allImages: true,
+                expand: [
+                    'promotions',
+                    'variations',
+                    'prices',
+                    'images',
+                    'page_meta_tags',
+                    'custom_properties'
+                ],
                 refine: _refine
             }
         },
@@ -183,12 +202,15 @@ const ProductList = (props) => {
         case 404:
             throw new HTTPNotFound('Category Not Found.')
         default:
-            throw new HTTPError(`HTTP Error ${errorStatus} occurred.`)
+            throw new HTTPError(errorStatus, `HTTP Error ${errorStatus} occurred.`)
     }
 
     /**************** Response Handling ****************/
     if (res) {
-        res.set('Cache-Control', `s-maxage=${MAX_CACHE_AGE}`)
+        res.set(
+            'Cache-Control',
+            `s-maxage=${MAX_CACHE_AGE}, stale-while-revalidate=${STALE_WHILE_REVALIDATE}`
+        )
     }
 
     // Reset scroll position when `isRefetching` becomes `true`.
@@ -364,14 +386,20 @@ const ProductList = (props) => {
                 try {
                     einstein.sendViewSearch(searchQuery, productSearchResult)
                 } catch (err) {
-                    console.error(err)
+                    logger.error('Einstein sendViewSearch error', {
+                        namespace: 'ProductList.useEffect',
+                        additionalProperties: {error: err, searchQuery}
+                    })
                 }
                 activeData.sendViewSearch(searchParams, productSearchResult)
             } else {
                 try {
                     einstein.sendViewCategory(category, productSearchResult)
                 } catch (err) {
-                    console.error(err)
+                    logger.error('Einstein sendViewCategory error', {
+                        namespace: 'ProductList.useEffect',
+                        additionalProperties: {error: err, category}
+                    })
                 }
                 activeData.sendViewCategory(searchParams, category, productSearchResult)
             }
@@ -390,12 +418,17 @@ const ProductList = (props) => {
                 <title>{category?.pageTitle ?? searchQuery}</title>
                 <meta name="description" content={category?.pageDescription ?? searchQuery} />
                 <meta name="keywords" content={category?.pageKeywords} />
+                {productSearchResult?.pageMetaTags?.map(({id, value}) => {
+                    return <meta name={id} content={value} key={id} />
+                })}
             </Helmet>
             {showNoResults ? (
                 <EmptySearchResults searchQuery={searchQuery} category={category} />
             ) : (
                 <>
                     <AbovePageHeader />
+                    <PageDesignerPromotionalBanner />
+
                     {/* Header */}
                     <Stack
                         display={{base: 'none', lg: 'flex'}}
@@ -431,6 +464,7 @@ const ProductList = (props) => {
                         </Box>
                     </Stack>
 
+                    {/* Filter Button for Mobile */}
                     <HideOnDesktop>
                         <Stack spacing={6}>
                             <PageHeader
@@ -502,9 +536,15 @@ const ProductList = (props) => {
                     <Grid templateColumns={{base: '1fr', md: '280px 1fr'}} columnGap={6}>
                         <Stack display={{base: 'none', md: 'flex'}}>
                             <Refinements
+                                itemsBefore={
+                                    category?.categories
+                                        ? [<CategoryLinks key="itemsBefore" category={category} />]
+                                        : undefined
+                                }
                                 isLoading={filtersLoading}
                                 toggleFilter={toggleFilter}
                                 filters={productSearchResult?.refinements}
+                                excludedFilters={['cgid']}
                                 selectedFilters={searchParams.refine}
                             />
                         </Stack>
@@ -514,7 +554,8 @@ const ProductList = (props) => {
                                 spacingX={4}
                                 spacingY={{base: 12, lg: 16}}
                             >
-                                {isHydrated() && (isRefetching || !productSearchResult)
+                                {isHydrated() &&
+                                ((isRefetching && !isFetched) || !productSearchResult)
                                     ? new Array(searchParams.limit)
                                           .fill(0)
                                           .map((value, index) => (
@@ -534,6 +575,11 @@ const ProductList = (props) => {
                                                   product={productSearchItem}
                                                   enableFavourite={true}
                                                   isFavourite={isInWishlist}
+                                                  isRefreshingData={isRefetching && isFetched}
+                                                  imageViewType={PRODUCT_LIST_IMAGE_VIEW_TYPE}
+                                                  selectableAttributeId={
+                                                      PRODUCT_LIST_SELECTABLE_ATTRIBUTE_ID
+                                                  }
                                                   onClick={() => {
                                                       if (searchQuery) {
                                                           einstein.sendClickSearch(
@@ -547,8 +593,8 @@ const ProductList = (props) => {
                                                           )
                                                       }
                                                   }}
-                                                  onFavouriteToggle={(isFavourite) => {
-                                                      const action = isFavourite
+                                                  onFavouriteToggle={(toBeFavourite) => {
+                                                      const action = toBeFavourite
                                                           ? addItemToWishlist
                                                           : removeItemFromWishlist
                                                       return action(productSearchItem)
@@ -606,12 +652,12 @@ const ProductList = (props) => {
                 <ModalOverlay />
                 <ModalContent top={0} marginTop={0}>
                     <ModalHeader>
-                        <Text fontWeight="bold" fontSize="2xl">
+                        <Heading as="h1" fontWeight="bold" fontSize="2xl">
                             <FormattedMessage
                                 defaultMessage="Filter"
                                 id="product_list.modal.title.filter"
                             />
-                        </Text>
+                        </Heading>
                     </ModalHeader>
                     <ModalCloseButton />
                     <ModalBody py={4}>
@@ -620,6 +666,18 @@ const ProductList = (props) => {
                             toggleFilter={toggleFilter}
                             filters={productSearchResult?.refinements}
                             selectedFilters={searchParams.refine}
+                            itemsBefore={
+                                category?.categories
+                                    ? [
+                                          <CategoryLinks
+                                              key="itemsBefore"
+                                              category={category}
+                                              onSelect={onClose}
+                                          />
+                                      ]
+                                    : undefined
+                            }
+                            excludedFilters={['cgid']}
                         />
                     </ModalBody>
 

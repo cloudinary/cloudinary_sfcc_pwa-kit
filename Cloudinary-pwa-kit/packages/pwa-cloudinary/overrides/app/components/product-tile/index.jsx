@@ -5,37 +5,65 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-import React, {useState} from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import PropTypes from 'prop-types'
-import {HeartIcon, HeartSolidIcon} from '@salesforce/retail-react-app/app/components/icons'
+import DisplayPrice from '@salesforce/retail-react-app/app/components/display-price'
 
 // Components
 import {
     AspectRatio,
+    Badge,
     Box,
     Skeleton as ChakraSkeleton,
     Text,
     Stack,
     useMultiStyleConfig,
-    IconButton
-} from '@chakra-ui/react'
+    IconButton,
+    HStack
+} from '@salesforce/retail-react-app/app/components/shared/ui'
 import DynamicImage from '@salesforce/retail-react-app/app/components/dynamic-image'
 
+// Project Components
+import { HeartIcon, HeartSolidIcon } from '@salesforce/retail-react-app/app/components/icons'
+import Link from '@salesforce/retail-react-app/app/components/link'
+import Swatch from '@salesforce/retail-react-app/app/components/swatch-group/swatch'
+import SwatchGroup from '@salesforce/retail-react-app/app/components/swatch-group'
+import withRegistration from '@salesforce/retail-react-app/app/components/with-registration'
+import PromoCallout from '@salesforce/retail-react-app/app/components/product-tile/promo-callout'
+
 // Hooks
-import {useIntl} from 'react-intl'
+import { useIntl } from 'react-intl'
 
 // Other
-import {productUrlBuilder} from '@salesforce/retail-react-app/app/utils/url'
-import Link from '@salesforce/retail-react-app/app/components/link'
-import withRegistration from '@salesforce/retail-react-app/app/components/with-registration'
-import {useCurrency} from '@salesforce/retail-react-app/app/hooks'
+import {
+    PRODUCT_TILE_IMAGE_VIEW_TYPE,
+    PRODUCT_TILE_SELECTABLE_ATTRIBUTE_ID
+} from '@salesforce/retail-react-app/app/constants'
+import { productUrlBuilder, rebuildPathWithParams } from '@salesforce/retail-react-app/app/utils/url'
+import { getPriceData } from '@salesforce/retail-react-app/app/utils/product-utils'
+import { useCurrency } from '@salesforce/retail-react-app/app/hooks'
+import {
+    filterImageGroups,
+    getDecoratedVariationAttributes
+} from '@salesforce/retail-react-app/app/utils/product-utils'
+import { PRODUCT_BADGE_DETAILS } from '@salesforce/retail-react-app/app/constants'
 
 // Cloudinary Component to Render CLD Images on PLP
 import CloudinaryPlpImage from '../../../../app/components/cloudinary-plp-images'
+import CloudinaryImageSwatches from '../../../../app/components/cloudinary-image-swatches'
 
 const IconButtonWithRegistration = withRegistration(IconButton)
 
 // Component Skeleton
+const PricingAndPromotionsSkeleton = () => {
+    return (
+        <Stack spacing={2} data-testid="sf-product-tile-pricing-and-promotions-skeleton">
+            <ChakraSkeleton width="80px" height="20px" />
+            <ChakraSkeleton width={{ base: '120px', md: '220px' }} height="12px" />
+        </Stack>
+    )
+}
+
 export const Skeleton = () => {
     const styles = useMultiStyleConfig('ProductTile')
     return (
@@ -46,8 +74,7 @@ export const Skeleton = () => {
                         <ChakraSkeleton />
                     </AspectRatio>
                 </Box>
-                <ChakraSkeleton width="80px" height="20px" />
-                <ChakraSkeleton width={{base: '120px', md: '220px'}} height="12px" />
+                <PricingAndPromotionsSkeleton />
             </Stack>
         </Box>
     )
@@ -59,17 +86,64 @@ export const Skeleton = () => {
  * It also supports favourite products, controlled by a heart icon.
  */
 const ProductTile = (props) => {
-    const intl = useIntl()
     const {
-        product,
+        dynamicImageProps,
         enableFavourite = false,
+        imageViewType = PRODUCT_TILE_IMAGE_VIEW_TYPE,
         isFavourite,
         onFavouriteToggle,
-        dynamicImageProps,
+        product,
+        selectableAttributeId = PRODUCT_TILE_SELECTABLE_ATTRIBUTE_ID,
+        badgeDetails = PRODUCT_BADGE_DETAILS,
+        isRefreshingData = false,
         ...rest
     } = props
+    const { imageGroups, productId, representedProduct, variants, c_cloudinary } = product
 
-    const {currency, image, price, productId, hitType, c_cloudinary} = product
+    const intl = useIntl()
+    const { currency } = useCurrency()
+    const isFavouriteLoading = useRef(false)
+    const styles = useMultiStyleConfig('ProductTile')
+
+    const isMasterVariant = !!variants
+    const initialVariationValue =
+        isMasterVariant && !!representedProduct
+            ? variants?.find((variant) => variant.productId == product.representedProduct.id)
+                ?.variationValues?.[selectableAttributeId]
+            : undefined
+
+    const [selectableAttributeValue, setSelectableAttributeValue] = useState(null)
+
+    // Primary image for the tile, the image is determined from the product and selected variation attributes.
+    const image = useMemo(() => {
+        // NOTE: If the selectable variation attribute doesn't exist in the products variation attributes
+        // array, lets not filter the image groups on it. This ensures we always return an image for non-variant
+        // type products.
+        const hasSelectableAttribute = product?.variationAttributes?.find(
+            ({ id }) => id === selectableAttributeId
+        )
+
+        const variationValues = { [selectableAttributeId]: selectableAttributeValue }
+        const filteredImageGroups = filterImageGroups(imageGroups, {
+            viewType: imageViewType,
+            variationValues: hasSelectableAttribute ? variationValues : {}
+        })
+
+        // Return the first image of the first group.
+        return filteredImageGroups?.[0]?.images[0]
+    }, [product, selectableAttributeId, selectableAttributeValue, imageViewType])
+
+    // Primary URL user to wrap the ProduceTile.
+    const productUrl = useMemo(
+        () =>
+            rebuildPathWithParams(productUrlBuilder({ id: productId }), {
+                [selectableAttributeId]: selectableAttributeValue
+            }),
+        [product, selectableAttributeId, selectableAttributeValue]
+    )
+
+    // NOTE: variationAttributes are only defined for master/variant type products.
+    const variationAttributes = useMemo(() => getDecoratedVariationAttributes(product), [product])
 
     // ProductTile is used by two components, RecommendedProducts and ProductList.
     // RecommendedProducts provides a localized product name as `name` and non-localized product
@@ -77,83 +151,198 @@ const ProductTile = (props) => {
     // use the `name` property.
     const localizedProductName = product.name ?? product.productName
 
-    const {currency: activeCurrency} = useCurrency()
-    const [isFavouriteLoading, setFavouriteLoading] = useState(false)
-    const styles = useMultiStyleConfig('ProductTile')
+    const productWithFilteredVariants = useMemo(() => {
+        const variants = product?.variants?.filter(
+            ({ variationValues }) =>
+                variationValues[selectableAttributeId] === selectableAttributeValue
+        )
+        return {
+            ...product,
+            variants
+        }
+    }, [product, selectableAttributeId, selectableAttributeValue])
+
+    // Pricing is dynamic! Ensure we are showing the right price for the selected variation attribute
+    // value.
+    const priceData = useMemo(() => {
+        return getPriceData(productWithFilteredVariants)
+    }, [productWithFilteredVariants])
+
+    // Retrieve product badges
+    const filteredLabels = useMemo(() => {
+        const labelsMap = new Map()
+        if (product?.representedProduct) {
+            badgeDetails.forEach((item) => {
+                if (
+                    item.propertyName &&
+                    typeof product.representedProduct[item.propertyName] === 'boolean' &&
+                    product.representedProduct[item.propertyName] === true
+                ) {
+                    labelsMap.set(intl.formatMessage(item.label), item.color)
+                }
+            })
+        }
+        return labelsMap
+    }, [product, badgeDetails])
 
     return (
-        <Link
-            data-testid="product-tile"
-            {...styles.container}
-            to={productUrlBuilder({id: productId}, intl.local)}
-            {...rest}
-        >
-            <Box {...styles.imageWrapper}>
-                {image && (
+        <Box {...styles.container}>
+            <Link data-testid="product-tile" to={productUrl} {...styles.link} {...rest}>
+                <Box {...styles.imageWrapper}>
                     <AspectRatio {...styles.image}>
-                        {/** Cloudinary Custom Code Starts */}
-                        {product && c_cloudinary?.plpEnabled ? (
-                            <CloudinaryPlpImage
-                                cloudinaryImage={c_cloudinary}
-                                image={image}
-                            />
-                        ) : (
-                            <DynamicImage
-                                src={`${image.disBaseLink || image.link}`}
-                                widths={dynamicImageProps?.widths}
-                                imageProps={{
-                                    alt: image.alt,
-                                    ...dynamicImageProps?.imageProps
-                                }}
-                            />
-                        )}
-                        {/** Cloudinary Custom Code Ends */}
-                    </AspectRatio>
-                )}
-
-                {enableFavourite && (
-                    <Box
-                        onClick={(e) => {
-                            // stop click event from bubbling
-                            // to avoid user from clicking the underlying
-                            // product while the favourite icon is disabled
-                            e.preventDefault()
-                        }}
-                    >
-                        <IconButtonWithRegistration
-                            aria-label={intl.formatMessage({
-                                id: 'product_tile.assistive_msg.wishlist',
-                                defaultMessage: 'Wishlist'
-                            })}
-                            icon={isFavourite ? <HeartSolidIcon /> : <HeartIcon />}
-                            {...styles.favIcon}
-                            disabled={isFavouriteLoading}
-                            onClick={async () => {
-                                setFavouriteLoading(true)
-                                await onFavouriteToggle(!isFavourite)
-                                setFavouriteLoading(false)
+                    {/** Cloudinary Custom Code Starts */}
+                    {product && c_cloudinary?.plpEnabled ? (
+                        <CloudinaryPlpImage
+                            cloudinaryImage={c_cloudinary}
+                            image={image}
+                        />
+                    ) : (
+                        <DynamicImage
+                            data-testid="product-tile-image"
+                            src={`${image?.disBaseLink ||
+                                image?.link ||
+                                product?.image?.disBaseLink ||
+                                product?.image?.link
+                                }`}
+                            widths={dynamicImageProps?.widths}
+                            imageProps={{
+                                // treat img as a decorative item, we don't need to pass `image.alt`
+                                // since it is the same as product name
+                                // which can cause confusion for individuals who uses screen readers
+                                alt: '',
+                                loading: 'lazy',
+                                ...dynamicImageProps?.imageProps
                             }}
                         />
-                    </Box>
+                    )}
+                    {/** Cloudinary Custom Code Ends */}
+                    </AspectRatio>
+                </Box>
+
+                {/* Swatches */}
+                {variationAttributes
+                    ?.filter(({ id }) => selectableAttributeId === id)
+                    ?.map(({ id, name, values }) => (
+                        <SwatchGroup
+                            ariaLabel={name}
+                            key={id}
+                            value={selectableAttributeValue}
+                            handleChange={(value) => {
+                                setSelectableAttributeValue(value)
+                            }}
+                        >
+                            {values?.map(({ name, swatch, value }) => {
+                                const content = swatch ? (
+                                    <Box
+                                        height="100%"
+                                        width="100%"
+                                        minWidth="32px"
+                                        backgroundRepeat="no-repeat"
+                                        backgroundSize="cover"
+                                        backgroundColor={name.toLowerCase()}
+                                        backgroundImage={`url(${swatch?.disBaseLink || swatch.link
+                                            })`}
+                                    />
+                                ) : (
+                                    name
+                                )
+
+                                return (
+                                    <Swatch
+                                        key={value}
+                                        value={value}
+                                        name={name}
+                                        variant={'circle'}
+                                        isFocusable={true}
+                                    >
+                                        {/** Cloudinary Custom Code Starts */}
+                                        {c_cloudinary?.cldSwatches &&
+                                            image ? (
+                                            <CloudinaryImageSwatches
+                                                cloudinaryImageGallery={c_cloudinary}
+                                                image={image}
+                                                value={value}
+                                            />
+                                        ) : (
+                                            <>
+                                                {content}
+                                            </>
+                                        )
+                                        }
+                                        {/** Cloudinary Custom Code Ends */}
+                                    </Swatch>
+                                )
+                            })}
+                        </SwatchGroup>
+                    ))}
+
+                {/* Title */}
+                <Text {...styles.title}>{localizedProductName}</Text>
+
+                {isRefreshingData ? (
+                    <PricingAndPromotionsSkeleton />
+                ) : (
+                    <>
+                        {/* Price */}
+                        <DisplayPrice priceData={priceData} currency={currency} />
+
+                        {/* Promotion call-out message */}
+                        {shouldShowPromoCallout(productWithFilteredVariants) && (
+                            <PromoCallout product={productWithFilteredVariants} />
+                        )}
+                    </>
                 )}
-            </Box>
-
-            {/* Title */}
-            <Text {...styles.title}>{localizedProductName}</Text>
-
-            {/* Price */}
-            <Text {...styles.price} data-testid="product-tile-price">
-                {hitType === 'set' &&
-                    intl.formatMessage({
-                        id: 'product_tile.label.starting_at_price',
-                        defaultMessage: 'Starting at'
-                    })}{' '}
-                {intl.formatNumber(price, {
-                    style: 'currency',
-                    currency: currency || activeCurrency
-                })}
-            </Text>
-        </Link>
+            </Link>
+            {enableFavourite && (
+                <Box
+                    onClick={(e) => {
+                        // stop click event from bubbling
+                        // to avoid user from clicking the underlying
+                        // product while the favourite icon is disabled
+                        e.preventDefault()
+                    }}
+                >
+                    <IconButtonWithRegistration
+                        data-testid="wishlist-button"
+                        aria-label={
+                            isFavourite
+                                ? intl.formatMessage(
+                                    {
+                                        id: 'product_tile.assistive_msg.remove_from_wishlist',
+                                        defaultMessage: 'Remove {product} from wishlist'
+                                    },
+                                    { product: localizedProductName }
+                                )
+                                : intl.formatMessage(
+                                    {
+                                        id: 'product_tile.assistive_msg.add_to_wishlist',
+                                        defaultMessage: 'Add {product} to wishlist'
+                                    },
+                                    { product: localizedProductName }
+                                )
+                        }
+                        icon={isFavourite ? <HeartSolidIcon /> : <HeartIcon />}
+                        {...styles.favIcon}
+                        onClick={async () => {
+                            if (!isFavouriteLoading.current) {
+                                isFavouriteLoading.current = true
+                                await onFavouriteToggle(!isFavourite)
+                                isFavouriteLoading.current = false
+                            }
+                        }}
+                    />
+                </Box>
+            )}
+            {filteredLabels.size > 0 && (
+                <HStack {...styles.badgeGroup}>
+                    {Array.from(filteredLabels.entries()).map(([label, colorScheme]) => (
+                        <Badge key={label} data-testid="product-badge" colorScheme={colorScheme}>
+                            {label}
+                        </Badge>
+                    ))}
+                </HStack>
+            )}
+        </Box>
     )
 }
 
@@ -171,7 +360,10 @@ ProductTile.propTypes = {
             disBaseLink: PropTypes.string,
             link: PropTypes.string
         }),
+        imageGroups: PropTypes.array,
         price: PropTypes.number,
+        priceRanges: PropTypes.array,
+        tieredPrices: PropTypes.array,
         // `name` is present and localized when `product` is provided by a RecommendedProducts component
         // (from Shopper Products `getProducts` endpoint), but is not present when `product` is
         // provided by a ProductList component.
@@ -185,7 +377,17 @@ ProductTile.propTypes = {
         // Note: useEinstein() transforms snake_case property names from the API response to camelCase
         productName: PropTypes.string,
         productId: PropTypes.string,
-        hitType: PropTypes.string
+        productPromotions: PropTypes.array,
+        representedProduct: PropTypes.object,
+        hitType: PropTypes.string,
+        variationAttributes: PropTypes.array,
+        variants: PropTypes.array,
+        type: PropTypes.shape({
+            set: PropTypes.bool,
+
+            bundle: PropTypes.bool,
+            item: PropTypes.bool
+        })
     }),
     /**
      * Enable adding/removing product as a favourite.
@@ -193,7 +395,7 @@ ProductTile.propTypes = {
      */
     enableFavourite: PropTypes.bool,
     /**
-     * Display the product as a faviourite.
+     * Display the product as a favourite.
      */
     isFavourite: PropTypes.bool,
     /**
@@ -201,7 +403,30 @@ ProductTile.propTypes = {
      * interacts with favourite icon/button.
      */
     onFavouriteToggle: PropTypes.func,
-    dynamicImageProps: PropTypes.object
+    /**
+     * The `viewType` of the image component. This defaults to 'large'.
+     */
+    imageViewType: PropTypes.string,
+    /**
+     * When displaying a master/variant product, this value represents the variation attribute that is displayed
+     * as a swatch below the main image. The default for this property is `color`.
+     */
+    selectableAttributeId: PropTypes.string,
+    dynamicImageProps: PropTypes.object,
+    /**
+     * Details of badge labels and the corresponding product custom properties that enable badges.
+     */
+    badgeDetails: PropTypes.array,
+    /**
+     * Determines whether to display a skeleton over personalizable data (e.g., pricing and promotions) during data refresh.
+     */
+    isRefreshingData: PropTypes.bool
 }
 
 export default ProductTile
+
+const shouldShowPromoCallout = (productWithFilteredVariants) => {
+    return productWithFilteredVariants.variants
+        ? Boolean(productWithFilteredVariants.variants.find((variant) => variant.productPromotions))
+        : Boolean(productWithFilteredVariants.productPromotions)
+}

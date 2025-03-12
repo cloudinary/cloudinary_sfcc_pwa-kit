@@ -17,11 +17,18 @@ import {
     ShopperGiftCertificates,
     ShopperSearch,
     ShopperSeo,
-    ShopperBasketsTypes
+    ShopperBasketsTypes,
+    ShopperStores
 } from 'commerce-sdk-isomorphic'
 import Auth from './auth'
 import {ApiClientConfigParams, ApiClients} from './hooks/types'
-
+import {Logger} from './types'
+import {
+    DWSID_COOKIE_NAME,
+    MOBIFY_PATH,
+    SERVER_AFFINITY_HEADER_KEY,
+    SLAS_PRIVATE_PROXY_PATH
+} from './constant'
 export interface CommerceApiProviderProps extends ApiClientConfigParams {
     children: React.ReactNode
     proxy: string
@@ -31,10 +38,14 @@ export interface CommerceApiProviderProps extends ApiClientConfigParams {
     fetchOptions?: ShopperBasketsTypes.FetchOptions
     headers?: Record<string, string>
     fetchedToken?: string
-    OCAPISessionsURL?: string
     enablePWAKitPrivateClient?: boolean
     clientSecret?: string
     silenceWarnings?: boolean
+    logger?: Logger
+    defaultDnt?: boolean
+    passwordlessLoginCallbackURI?: string
+    refreshTokenRegisteredCookieTTL?: number
+    refreshTokenGuestCookieTTL?: number
 }
 
 /**
@@ -74,6 +85,7 @@ export const AuthContext = React.createContext({} as Auth)
                     locale="en-US"
                     enablePWAKitPrivateClient={true}
                     currency="USD"
+                    logger={logger}
                 >
                     {children}
                 </CommerceApiProvider>
@@ -84,7 +96,7 @@ export const AuthContext = React.createContext({} as Auth)
  * ```
  * Note: The provider can enable SLAS Private Client mode in 2 ways.
  * `enablePWAKitPrivateClient` sets commerce-sdk-react to work with the PWA proxy
- * `/mobify/scapi/api/auth` to set the private client secret. PWA users should use
+ * `/mobify/slas/private` to set the private client secret. PWA users should use
  * this option.
  *
  * Non-PWA Kit users can enable private client mode by passing in a client secret
@@ -107,50 +119,18 @@ const CommerceApiProvider = (props: CommerceApiProviderProps): ReactElement => {
         locale,
         currency,
         fetchedToken,
-        OCAPISessionsURL,
         enablePWAKitPrivateClient,
         clientSecret,
-        silenceWarnings
+        silenceWarnings,
+        logger,
+        defaultDnt,
+        passwordlessLoginCallbackURI,
+        refreshTokenRegisteredCookieTTL,
+        refreshTokenGuestCookieTTL
     } = props
-    const config = {
-        proxy,
-        headers,
-        parameters: {
-            clientId,
-            organizationId,
-            shortCode,
-            siteId,
-            locale,
-            currency
-        },
-        throwOnBadResponse: true,
-        fetchOptions
-    }
-    const apiClients = useMemo(() => {
-        return {
-            shopperBaskets: new ShopperBaskets(config),
-            shopperContexts: new ShopperContexts(config),
-            shopperCustomers: new ShopperCustomers(config),
-            shopperExperience: new ShopperExperience(config),
-            shopperGiftCertificates: new ShopperGiftCertificates(config),
-            shopperLogin: new ShopperLogin(config),
-            shopperOrders: new ShopperOrders(config),
-            shopperProducts: new ShopperProducts(config),
-            shopperPromotions: new ShopperPromotions(config),
-            shopperSearch: new ShopperSearch(config),
-            shopperSeo: new ShopperSeo(config)
-        }
-    }, [
-        clientId,
-        organizationId,
-        shortCode,
-        siteId,
-        proxy,
-        fetchOptions,
-        locale,
-        currency,
-        headers?.['correlation-id']
-    ])
+
+    // Set the logger based on provided configuration, or default to the console object if no logger is provided
+    const configLogger = logger || console
 
     const auth = useMemo(() => {
         return new Auth({
@@ -162,10 +142,14 @@ const CommerceApiProvider = (props: CommerceApiProviderProps): ReactElement => {
             redirectURI,
             fetchOptions,
             fetchedToken,
-            OCAPISessionsURL,
             enablePWAKitPrivateClient,
             clientSecret,
-            silenceWarnings
+            silenceWarnings,
+            logger: configLogger,
+            defaultDnt,
+            passwordlessLoginCallbackURI,
+            refreshTokenRegisteredCookieTTL,
+            refreshTokenGuestCookieTTL
         })
     }, [
         clientId,
@@ -176,10 +160,71 @@ const CommerceApiProvider = (props: CommerceApiProviderProps): ReactElement => {
         redirectURI,
         fetchOptions,
         fetchedToken,
-        OCAPISessionsURL,
         enablePWAKitPrivateClient,
         clientSecret,
-        silenceWarnings
+        silenceWarnings,
+        configLogger,
+        defaultDnt,
+        passwordlessLoginCallbackURI,
+        refreshTokenRegisteredCookieTTL,
+        refreshTokenGuestCookieTTL
+    ])
+
+    const dwsid = auth.get(DWSID_COOKIE_NAME)
+    const serverAffinityHeader: Record<string, string> = {}
+    if (dwsid) {
+        serverAffinityHeader[SERVER_AFFINITY_HEADER_KEY] = dwsid
+    }
+
+    const config = {
+        proxy,
+        headers: {
+            ...headers,
+            ...serverAffinityHeader
+        },
+        parameters: {
+            clientId,
+            organizationId,
+            shortCode,
+            siteId,
+            locale,
+            currency
+        },
+        throwOnBadResponse: true,
+        fetchOptions
+    }
+
+    const baseUrl = config.proxy.split(MOBIFY_PATH)[0]
+    const privateClientEndpoint = `${baseUrl}${SLAS_PRIVATE_PROXY_PATH}`
+
+    const apiClients = useMemo(() => {
+        return {
+            shopperBaskets: new ShopperBaskets(config),
+            shopperContexts: new ShopperContexts(config),
+            shopperCustomers: new ShopperCustomers(config),
+            shopperExperience: new ShopperExperience(config),
+            shopperGiftCertificates: new ShopperGiftCertificates(config),
+            shopperLogin: new ShopperLogin({
+                ...config,
+                proxy: enablePWAKitPrivateClient ? privateClientEndpoint : config.proxy
+            }),
+            shopperOrders: new ShopperOrders(config),
+            shopperProducts: new ShopperProducts(config),
+            shopperPromotions: new ShopperPromotions(config),
+            shopperSearch: new ShopperSearch(config),
+            shopperSeo: new ShopperSeo(config),
+            shopperStores: new ShopperStores(config)
+        }
+    }, [
+        clientId,
+        organizationId,
+        shortCode,
+        siteId,
+        proxy,
+        fetchOptions,
+        locale,
+        currency,
+        headers?.['correlation-id']
     ])
 
     // Initialize the session
@@ -198,7 +243,12 @@ const CommerceApiProvider = (props: CommerceApiProviderProps): ReactElement => {
                 shortCode,
                 locale,
                 currency,
-                silenceWarnings
+                silenceWarnings,
+                logger: configLogger,
+                defaultDnt,
+                passwordlessLoginCallbackURI,
+                refreshTokenRegisteredCookieTTL,
+                refreshTokenGuestCookieTTL
             }}
         >
             <CommerceApiContext.Provider value={apiClients}>

@@ -4,8 +4,10 @@
  * SPDX-License-Identifier: BSD-3-Clause
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
-import {useQuery as useReactQuery} from '@tanstack/react-query'
+import {useQuery as useReactQuery, UseQueryOptions} from '@tanstack/react-query'
+import {helpers} from 'commerce-sdk-isomorphic'
 import {useAuthorizationHeader} from './useAuthorizationHeader'
+import useAuthContext from './useAuthContext'
 import {
     ApiClient,
     ApiMethod,
@@ -14,10 +16,13 @@ import {
     ApiQueryOptions,
     MergedOptions,
     NullableParameters,
-    OmitNullableParameters
+    OmitNullableParameters,
+    OptionalCustomEndpointClientConfig
 } from './types'
+import useConfig from './useConfig'
 import {hasAllKeys} from './utils'
 import {onClient} from '../utils'
+import {handleInvalidToken, generateCustomEndpointOptions} from './helpers'
 
 /**
  * Helper for query hooks, contains most of the logic in order to keep individual hooks small.
@@ -49,6 +54,7 @@ export const useQuery = <Client extends ApiClient, Options extends ApiOptions, D
     // trade-off, as the behavior is opt-in by the end user, and it feels like adding type safety
     // for this case would add significantly more complexity.
     const wrappedMethod = async () => await authenticatedMethod(apiOptions as Options)
+
     return useReactQuery(hookConfig.queryKey, wrappedMethod, {
         enabled:
             // Individual hooks can provide `enabled` checks that are done in ADDITION to
@@ -65,4 +71,69 @@ export const useQuery = <Client extends ApiClient, Options extends ApiOptions, D
             ? {retryOnMount: onClient() ? queryOptions?.retryOnMount : false}
             : {})
     })
+}
+
+/**
+ * A hook for SCAPI custom endpoint queries.
+ *
+ * Besides calling custom endpoint, this hook does a few things for better DX.
+ * 1. inject access token
+ * 2. merge SCAPI client configurations from the CommerceApiProvider
+ * @param apiOptions - Options passed through to commerce-sdk-isomorphic
+ * @param queryOptions - Options passed through to @tanstack/react-query
+ * @returns A TanStack Query query hook with data from the custom API endpoint.
+ */
+export const useCustomQuery = (
+    apiOptions: OptionalCustomEndpointClientConfig,
+    queryOptions?: UseQueryOptions<unknown, unknown, unknown, any>
+) => {
+    const config = useConfig()
+    const logger = config.logger || console
+    const auth = useAuthContext()
+    const callCustomEndpointWithAuth = (options: OptionalCustomEndpointClientConfig) => {
+        return async () => {
+            const {access_token} = await auth.ready()
+            const customEndpointOptions = generateCustomEndpointOptions(
+                options,
+                config,
+                access_token
+            )
+
+            return await helpers.callCustomEndpoint(customEndpointOptions).catch(async (error) => {
+                const {access_token} = await handleInvalidToken(error, auth, logger)
+
+                // Retry again after resetting auth state
+                const customEndpointOptions = generateCustomEndpointOptions(
+                    options,
+                    config,
+                    access_token
+                )
+                return await helpers.callCustomEndpoint(customEndpointOptions)
+            })
+        }
+    }
+
+    if (
+        !apiOptions.options.customApiPathParameters ||
+        !apiOptions.options.customApiPathParameters.apiName ||
+        !apiOptions.options.customApiPathParameters.apiVersion ||
+        !apiOptions.options.customApiPathParameters.endpointPath
+    ) {
+        throw new Error('options.customApiPathParameters are required for useCustomQuery')
+    }
+
+    // Following the query key convention in this repo, the first element of the query key is a static prefix
+    // the following elements are the path components of the endpoint
+    const queryKey = [
+        '/commerce-sdk-react',
+        '/custom',
+        `/${apiOptions.options.customApiPathParameters.apiName}`,
+        `/${apiOptions.options.customApiPathParameters.apiVersion}`,
+        `/organizations`,
+        `/${apiOptions.options.customApiPathParameters.organizationId || config.organizationId}`,
+        `/${apiOptions.options.customApiPathParameters.endpointPath}`,
+        {...apiOptions.options.parameters}
+    ]
+
+    return useReactQuery(queryKey, callCustomEndpointWithAuth(apiOptions), queryOptions)
 }

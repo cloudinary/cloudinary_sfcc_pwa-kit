@@ -131,7 +131,7 @@ export const escapeRegexChars = (str) => str.replace(/[-[\]{}()*+?.,\\^$|#\s]/g,
  * @returns stringified HTML Node
  */
 export const boldString = (str, substr) => {
-    return str.replace(RegExp(escapeRegexChars(substr.trim()), 'gi'), '<b>$&</b>')
+    return str?.replace(RegExp(escapeRegexChars(substr.trim()), 'gi'), '<b>$&</b>')
 }
 
 /**
@@ -199,3 +199,21 @@ export const mergeMatchedItems = (arr1 = [], arr2 = []) => {
  * @return {boolean}
  */
 export const isHydrated = () => typeof window !== 'undefined' && !window.__HYDRATING__
+
+/**
+ * Constructs a redirectURI by combining `appOrigin` with `redirectPath`.
+ * Ensures that `redirectPath` starts with a '/'.
+ * Returns an empty string if `redirectPath` is falsy.
+ *
+ * @param {*} appOrigin
+ * @param {*} redirectPath - relative redirect path
+ * @returns redirectURI to be passed into the social login flow
+ */
+export const buildRedirectURI = (appOrigin = '', redirectPath = '') => {
+    if (redirectPath) {
+        const path = redirectPath.startsWith('/') ? redirectPath : `/${redirectPath}`
+        return `${appOrigin}${path}`
+    } else {
+        return ''
+    }
+}

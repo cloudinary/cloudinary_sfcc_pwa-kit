@@ -568,6 +568,50 @@ describe('SSRServer operation', () => {
             })
     })
 
+    test('should set xForwardedOrigin based on defined x-forwarded-host and x-forwarded-proto headers', () => {
+        process.env = {
+            MRT_ALLOW_COOKIES: 'true'
+        }
+        const forwardedHost = 'www.example.com'
+        const forwardedProto = 'https'
+        const app = RemoteServerFactory._createApp(opts())
+        const route = (req, res) => {
+            expect(req.headers['x-forwarded-host']).toBe(forwardedHost)
+            expect(res.locals.xForwardedOrigin).toBe(`${forwardedProto}://${forwardedHost}`)
+            res.sendStatus(200)
+        }
+        app.get('/*', route)
+
+        return request(app)
+            .get('/')
+            .set('x-forwarded-host', forwardedHost)
+            .set('x-forwarded-proto', 'https')
+            .then((response) => {
+                expect(response.status).toBe(200)
+            })
+    })
+    test('should set xForwardedOrigin based on defined x-forwarded-host and undefined x-forwarded-proto headers', () => {
+        process.env = {
+            MRT_ALLOW_COOKIES: 'true'
+        }
+        const options = opts()
+        const forwardedHost = 'www.example.com'
+        const app = RemoteServerFactory._createApp(options)
+        const route = (req, res) => {
+            expect(req.headers['x-forwarded-host']).toBe(forwardedHost)
+            expect(res.locals.xForwardedOrigin).toBe(`${options.protocol}://${forwardedHost}`)
+            res.sendStatus(200)
+        }
+        app.get('/*', route)
+
+        return request(app)
+            .get('/')
+            .set('x-forwarded-host', forwardedHost)
+            .then((response) => {
+                expect(response.status).toBe(200)
+            })
+    })
+
     test(`should reject POST requests to /`, () => {
         const app = RemoteServerFactory._createApp(opts())
         const route = (req, res) => {
@@ -1066,12 +1110,12 @@ describe('SLAS private client proxy', () => {
 
     test('should not create proxy by default', () => {
         const app = RemoteServerFactory._createApp(opts())
-        return request(app).get('/mobify/scapi/shopper/auth').expect(404)
+        return request(app).get('/mobify/slas/private').expect(404)
     })
 
     test('should return HTTP 501 if PWA_KIT_SLAS_CLIENT_SECRET env var not set', () => {
         const app = RemoteServerFactory._createApp(opts({useSLASPrivateClient: true}))
-        return request(app).get('/mobify/scapi/shopper/auth').expect(501)
+        return request(app).get('/mobify/slas/private').expect(501)
     })
 
     test('does not insert client secret if request not for /oauth2/token', async () => {
@@ -1095,7 +1139,7 @@ describe('SLAS private client proxy', () => {
         )
 
         return await request(app)
-            .get('/mobify/scapi/shopper/auth/somePath')
+            .get('/mobify/slas/private/somePath')
             .then((response) => {
                 expect(response.body.authorization).toBeUndefined()
                 expect(response.body.host).toBe('shortCode.api.commercecloud.salesforce.com')
@@ -1126,9 +1170,70 @@ describe('SLAS private client proxy', () => {
         )
 
         return await request(app)
-            .get('/mobify/scapi/shopper/auth/oauth2/token')
+            .get('/mobify/slas/private/oauth2/token')
             .then((response) => {
                 expect(response.body.authorization).toBe(`Basic ${encodedCredentials}`)
+                expect(response.body.host).toBe('shortCode.api.commercecloud.salesforce.com')
+                expect(response.body['x-mobify']).toBe('true')
+            })
+    }, 15000)
+
+    test('does not add _sfdc_client_auth header if request not for /oauth2/trusted-agent/token', async () => {
+        process.env.PWA_KIT_SLAS_CLIENT_SECRET = 'a secret'
+
+        const encodedCredentials = Buffer.from('clientId:a secret').toString('base64')
+
+        const app = RemoteServerFactory._createApp(
+            opts({
+                mobify: {
+                    app: {
+                        commerceAPI: {
+                            parameters: {
+                                clientId: 'clientId',
+                                shortCode: 'shortCode'
+                            }
+                        }
+                    }
+                },
+                useSLASPrivateClient: true,
+                slasTarget: slasTarget
+            })
+        )
+
+        return await request(app)
+            .get('/mobify/slas/oauth2/other-path')
+            .then((response) => {
+                expect(response.body._sfdc_client_auth).toBeUndefined()
+            })
+    }, 15000)
+
+    test('adds _sfdc_client_auth header if request is for /oauth2/trusted-agent/token', async () => {
+        process.env.PWA_KIT_SLAS_CLIENT_SECRET = 'a secret'
+
+        const encodedCredentials = Buffer.from('clientId:a secret').toString('base64')
+
+        const app = RemoteServerFactory._createApp(
+            opts({
+                mobify: {
+                    app: {
+                        commerceAPI: {
+                            parameters: {
+                                clientId: 'clientId',
+                                shortCode: 'shortCode'
+                            }
+                        }
+                    }
+                },
+                useSLASPrivateClient: true,
+                slasTarget: slasTarget,
+                trustedAgentAuthPathMatch: /\/oauth2\/trusted-agent\/token/
+            })
+        )
+
+        return await request(app)
+            .get('/mobify/slas/private/oauth2/trusted-agent/token')
+            .then((response) => {
+                expect(response.body['_sfdc_client_auth']).toBe(encodedCredentials)
                 expect(response.body.host).toBe('shortCode.api.commercecloud.salesforce.com')
                 expect(response.body['x-mobify']).toBe('true')
             })

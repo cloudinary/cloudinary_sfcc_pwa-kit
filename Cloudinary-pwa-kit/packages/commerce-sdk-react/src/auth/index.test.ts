@@ -5,10 +5,22 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 import Auth, {AuthData} from './'
+import {waitFor} from '@testing-library/react'
 import jwt from 'jsonwebtoken'
-import {helpers} from 'commerce-sdk-isomorphic'
+import {helpers, ShopperCustomersTypes, ShopperLogin} from 'commerce-sdk-isomorphic'
 import * as utils from '../utils'
 import {SLAS_SECRET_PLACEHOLDER} from '../constant'
+import {ShopperLoginTypes} from 'commerce-sdk-isomorphic'
+import {
+    DEFAULT_SLAS_REFRESH_TOKEN_REGISTERED_TTL,
+    DEFAULT_SLAS_REFRESH_TOKEN_GUEST_TTL
+} from './index'
+import {ApiClientConfigParams, RequireKeys} from '../hooks/types'
+
+const baseCustomer: RequireKeys<ShopperCustomersTypes.Customer, 'login'> = {
+    customerId: 'customerId',
+    login: 'test@test.com'
+}
 
 // Use memory storage for all our storage types.
 jest.mock('./storage', () => {
@@ -31,8 +43,18 @@ jest.mock('commerce-sdk-isomorphic', () => {
             loginGuestUser: jest.fn().mockResolvedValue(''),
             loginGuestUserPrivate: jest.fn().mockResolvedValue(''),
             loginRegisteredUserB2C: jest.fn().mockResolvedValue(''),
-            logout: jest.fn().mockResolvedValue('')
-        }
+            logout: jest.fn().mockResolvedValue(''),
+            handleTokenResponse: jest.fn().mockResolvedValue(''),
+            loginIDPUser: jest.fn().mockResolvedValue(''),
+            authorizeIDP: jest.fn().mockResolvedValue(''),
+            authorizePasswordless: jest.fn().mockResolvedValue(''),
+            getPasswordLessAccessToken: jest.fn().mockResolvedValue('')
+        },
+        ShopperCustomers: jest.fn().mockImplementation(() => {
+            return {
+                updateCustomerPassword: () => {}
+            }
+        })
     }
 })
 
@@ -40,7 +62,9 @@ jest.mock('../utils', () => ({
     __esModule: true,
     onClient: () => true,
     getParentOrigin: jest.fn().mockResolvedValue(''),
-    isOriginTrusted: () => false
+    isOriginTrusted: () => false,
+    getDefaultCookieAttributes: () => {},
+    isAbsoluteUrl: () => true
 }))
 
 /** The auth data we store has a slightly different shape than what we use. */
@@ -52,12 +76,58 @@ const config = {
     shortCode: 'shortCode',
     siteId: 'siteId',
     proxy: 'proxy',
-    redirectURI: 'redirectURI'
+    redirectURI: 'redirectURI',
+    logger: console,
+    passwordlessLoginCallbackURI: 'passwordlessLoginCallbackURI'
 }
 
 const configSLASPrivate = {
     ...config,
     enablePWAKitPrivateClient: true
+}
+const JWTNotExpired = jwt.sign(
+    {
+        exp: Math.floor(Date.now() / 1000) + 1000,
+        sub: `cc-slas::zzrf_001::scid:xxxxxx::usid:usid`,
+        isb: `uido:ecom::upn:test@gmail.com::uidn:firstname lastname::gcid:guestuserid::rcid:rcid::chid:siteId`
+    },
+    'secret'
+)
+const JWTExpired = jwt.sign(
+    {
+        exp: Math.floor(Date.now() / 1000) - 1000,
+        sub: `cc-slas::zzrf_001::scid:xxxxxx::usid:usid`,
+        isb: `uido:ecom::upn:test@gmail.com::uidn:firstname lastname::gcid:guestuserid::rcid:rcid::chid:siteId`
+    },
+    'secret'
+)
+
+const configPasswordlessSms = {
+    clientId: 'clientId',
+    organizationId: 'organizationId',
+    shortCode: 'shortCode',
+    siteId: 'siteId',
+    proxy: 'proxy',
+    redirectURI: 'redirectURI',
+    logger: console
+}
+
+const FAKE_SLAS_EXPIRY = DEFAULT_SLAS_REFRESH_TOKEN_REGISTERED_TTL - 1
+
+const TOKEN_RESPONSE: ShopperLoginTypes.TokenResponse = {
+    access_token:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjYy1zbGFzOjp6enJmXzAwMTo6c2NpZDpjOWM0NWJmZC0wZWQzLTRhYTIteHh4eC00MGY4ODk2MmI4MzY6OnVzaWQ6YjQ4NjUyMzMtZGU5Mi00MDM5LXh4eHgtYWEyZGZjOGMxZWE1IiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJpc2IiOiJ1aWRvOmVjb206OnVwbjpHdWVzdHx8am9obi5kb2VAZXhhbXBsZS5jb206OnVpZG46Sm9obiBEb2U6OmdjaWQ6Z3Vlc3QtMTIzNDU6OnJjaWQ6cmVnaXN0ZXJlZC02Nzg5MCIsImRudCI6InRlc3QifQ.9yKtUb22ExO-Q4VNQRAyIgTm63l3x5z45Uu1FIQa5dQ',
+    customer_id: 'customer_id_xyz',
+    enc_user_id: 'enc_user_id_xyz',
+    expires_in: 1800,
+    id_token: 'id_token_xyz',
+    refresh_token: 'refresh_token_xyz',
+    token_type: 'token_type_abc',
+    usid: 'usid_xyz',
+    idp_access_token: 'idp_access_token_xyz',
+    // test that this is authoritative and not set to
+    // `DEFAULT_SLAS_REFRESH_TOKEN_REGISTERED_TTL` when config.refreshTokenRegisteredCookieTTL is not set
+    refresh_token_expires_in: FAKE_SLAS_EXPIRY
 }
 
 describe('Auth', () => {
@@ -108,7 +178,7 @@ describe('Auth', () => {
             token_type: 'token_type',
             usid: 'usid',
             customer_type: 'guest',
-            refresh_token_expires_in: 'refresh_token_expires_in'
+            refresh_token_expires_in: FAKE_SLAS_EXPIRY
         }
         // Convert stored format to exposed format
         const result = {...sample, refresh_token: 'refresh_token_guest'}
@@ -123,8 +193,6 @@ describe('Auth', () => {
     })
     test('isTokenExpired', () => {
         const auth = new Auth(config)
-        const JWTNotExpired = jwt.sign({exp: Math.floor(Date.now() / 1000) + 1000}, 'secret')
-        const JWTExpired = jwt.sign({exp: Math.floor(Date.now() / 1000) - 1000}, 'secret')
         // @ts-expect-error private method
         expect(auth.isTokenExpired(JWTNotExpired)).toBe(false)
         // @ts-expect-error private method
@@ -219,7 +287,6 @@ describe('Auth', () => {
     })
     test('ready - re-use valid access token', async () => {
         const auth = new Auth(config)
-        const JWTNotExpired = jwt.sign({exp: Math.floor(Date.now() / 1000) + 1000}, 'secret')
 
         const data: StoredAuthData = {
             refresh_token_guest: 'refresh_token_guest',
@@ -232,7 +299,7 @@ describe('Auth', () => {
             token_type: 'token_type',
             usid: 'usid',
             customer_type: 'guest',
-            refresh_token_expires_in: 'refresh_token_expires_in'
+            refresh_token_expires_in: FAKE_SLAS_EXPIRY
         }
         // Convert stored format to exposed format
         const result = {...data, refresh_token: 'refresh_token_guest'}
@@ -301,8 +368,6 @@ describe('Auth', () => {
     })
     test('ready - use refresh token when access token is expired', async () => {
         const auth = new Auth(config)
-        const JWTNotExpired = jwt.sign({exp: Math.floor(Date.now() / 1000) + 1000}, 'secret')
-        const JWTExpired = jwt.sign({exp: Math.floor(Date.now() / 1000) - 1000}, 'secret')
 
         // To simulate real-world scenario, let's first test with a good valid token
         const data: StoredAuthData = {
@@ -337,8 +402,6 @@ describe('Auth', () => {
 
     test('ready - use refresh token when access token is expired with slas private client', async () => {
         const auth = new Auth(configSLASPrivate)
-        const JWTNotExpired = jwt.sign({exp: Math.floor(Date.now() / 1000) + 1000}, 'secret')
-        const JWTExpired = jwt.sign({exp: Math.floor(Date.now() / 1000) - 1000}, 'secret')
 
         // To simulate real-world scenario, let's first test with a good valid token
         const data: StoredAuthData = {
@@ -378,6 +441,49 @@ describe('Auth', () => {
         await auth.ready()
         expect(helpers.loginGuestUser).toHaveBeenCalled()
     })
+    test('ready - throw error and discard refresh token if refresh token is invalid', async () => {
+        // Force the mock to throw just for this test
+        const refreshAccessTokenSpy = jest.spyOn(helpers, 'refreshAccessToken')
+        refreshAccessTokenSpy.mockRejectedValueOnce({
+            response: {
+                json: () => {
+                    return {
+                        status_code: 404,
+                        message: 'test'
+                    }
+                }
+            }
+        })
+
+        // To simulate real-world scenario, let's start with an expired access token
+        const data: StoredAuthData = {
+            refresh_token_guest: 'refresh_token_guest',
+            access_token: JWTExpired,
+            customer_id: 'customer_id',
+            enc_user_id: 'enc_user_id',
+            expires_in: 1800,
+            id_token: 'id_token',
+            idp_access_token: 'idp_access_token',
+            token_type: 'token_type',
+            usid: 'usid',
+            customer_type: 'guest',
+            refresh_token_expires_in: 30 * 24 * 3600
+        }
+
+        const auth = new Auth(config)
+
+        Object.keys(data).forEach((key) => {
+            // @ts-expect-error private method
+            auth.set(key, data[key])
+        })
+
+        await auth.ready()
+
+        // The call to loginGuestUser only executes when refreshAccessToken fails
+        expect(refreshAccessTokenSpy).toHaveBeenCalled()
+        expect(auth.get('refresh_token_guest')).toBe('')
+        expect(helpers.loginGuestUser).toHaveBeenCalled()
+    })
 
     test('loginGuestUser', async () => {
         const auth = new Auth(config)
@@ -385,12 +491,104 @@ describe('Auth', () => {
         expect(helpers.loginGuestUser).toHaveBeenCalled()
     })
 
+    test.each([
+        // When user has not selected DNT pref
+        [true, undefined, {dnt: true}],
+        [false, undefined, {dnt: false}],
+        [undefined, undefined, {dnt: false}],
+        // When user has selected DNT, the dw_dnt cookie sets dnt
+        [true, '0', {dnt: false}],
+        [false, '1', {dnt: true}],
+        [false, '0', {dnt: false}]
+    ])(
+        'dnt flag is set correctly for defaultDnt=`%p`, dw_dnt=`%i`, expected=`%s`',
+        async (defaultDnt, dw_dnt, expected) => {
+            const auth = new Auth({...config, defaultDnt})
+            if (dw_dnt) {
+                // @ts-expect-error private method
+                auth.set('dw_dnt', dw_dnt)
+            }
+            await auth.loginGuestUser()
+            expect(helpers.loginGuestUser).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.objectContaining(expected)
+            )
+            const expectedDnt = 'dnt' in expected ? expected.dnt : false
+            const dntPref = auth.getDnt({
+                includeDefaults: true
+            })
+            expect(dntPref).toBe(expectedDnt)
+        }
+    )
+
+    test.each([
+        // auth config | expected return value
+        [undefined, DEFAULT_SLAS_REFRESH_TOKEN_REGISTERED_TTL, true],
+        [undefined, DEFAULT_SLAS_REFRESH_TOKEN_REGISTERED_TTL, false],
+        [0, DEFAULT_SLAS_REFRESH_TOKEN_REGISTERED_TTL, false],
+        [-1, DEFAULT_SLAS_REFRESH_TOKEN_REGISTERED_TTL, false],
+        [
+            DEFAULT_SLAS_REFRESH_TOKEN_REGISTERED_TTL + 1,
+            DEFAULT_SLAS_REFRESH_TOKEN_REGISTERED_TTL,
+            false
+        ],
+        [900, 900, false]
+    ])(
+        'refreshTokenRegisteredCookieTTL is set correctly for refreshTokenRegisteredCookieTTLValue=`%p`, expected=`%s`',
+        async (refreshTokenRegisteredCookieTTL, expected, hasNoResponseValue) => {
+            // Mock the loginRegisteredUserB2C helper to return a token response
+            TOKEN_RESPONSE.refresh_token_expires_in = hasNoResponseValue
+                ? undefined
+                : DEFAULT_SLAS_REFRESH_TOKEN_REGISTERED_TTL
+            ;(helpers.loginRegisteredUserB2C as jest.Mock).mockResolvedValueOnce(TOKEN_RESPONSE)
+
+            const auth = new Auth({...config, refreshTokenRegisteredCookieTTL})
+            // Call the public method because the getter for refresh_token_expires_in is private
+            await auth.loginRegisteredUserB2C({username: 'test', password: 'test'})
+            expect(Number(auth.get('refresh_token_expires_in'))).toBe(expected)
+        }
+    )
+
+    test.each([
+        // auth config | expected return value
+        [undefined, DEFAULT_SLAS_REFRESH_TOKEN_GUEST_TTL, true],
+        [undefined, DEFAULT_SLAS_REFRESH_TOKEN_GUEST_TTL, false],
+        [0, DEFAULT_SLAS_REFRESH_TOKEN_GUEST_TTL, false],
+        [-1, DEFAULT_SLAS_REFRESH_TOKEN_GUEST_TTL, false],
+        [DEFAULT_SLAS_REFRESH_TOKEN_GUEST_TTL + 1, DEFAULT_SLAS_REFRESH_TOKEN_GUEST_TTL, false],
+        [900, 900, false]
+    ])(
+        'refreshTokenGuestCookieTTL is set correctly for refreshTokenGuestCookieTTLValue=`%p`, expected=`%s`',
+        async (refreshTokenGuestCookieTTL, expected, hasNoResponseValue) => {
+            // Mock the loginRegisteredUserB2C helper to return a token response
+            TOKEN_RESPONSE.refresh_token_expires_in = hasNoResponseValue
+                ? undefined
+                : DEFAULT_SLAS_REFRESH_TOKEN_GUEST_TTL
+            ;(helpers.loginGuestUser as jest.Mock).mockResolvedValueOnce(TOKEN_RESPONSE)
+
+            const auth = new Auth({...config, refreshTokenGuestCookieTTL})
+            // Call the public method because the getter for refresh_token_expires_in is private
+            await auth.loginGuestUser()
+            expect(Number(auth.get('refresh_token_expires_in'))).toBe(expected)
+        }
+    )
+
     test('loginGuestUser with slas private', async () => {
         const auth = new Auth(configSLASPrivate)
         await auth.loginGuestUser()
         expect(helpers.loginGuestUserPrivate).toHaveBeenCalled()
         const funcArg = (helpers.loginGuestUserPrivate as jest.Mock).mock.calls[0][2]
         expect(funcArg).toMatchObject({clientSecret: SLAS_SECRET_PLACEHOLDER})
+    })
+
+    test('loginGuestUser throws error when API has error', async () => {
+        // Force the mock to throw just for this test
+        const loginGuestUserSpy = jest.spyOn(helpers, 'loginGuestUser')
+        loginGuestUserSpy.mockRejectedValueOnce(new Error('test'))
+
+        const auth = new Auth(config)
+        await expect(auth.loginGuestUser()).rejects.toThrow()
+        expect(helpers.loginGuestUser).toHaveBeenCalled()
     })
 
     test('loginRegisteredUserB2C', async () => {
@@ -415,10 +613,99 @@ describe('Auth', () => {
             clientSecret: SLAS_SECRET_PLACEHOLDER
         })
     })
-    test('logout', async () => {
+
+    test('loginIDPUser calls isomorphic loginIDPUser', async () => {
+        const auth = new Auth(config)
+        await auth.loginIDPUser({redirectURI: 'redirectURI', code: 'test'})
+        expect(helpers.loginIDPUser).toHaveBeenCalled()
+        const functionArg = (helpers.loginIDPUser as jest.Mock).mock.calls[0][2]
+        expect(functionArg).toMatchObject({redirectURI: 'redirectURI', code: 'test'})
+    })
+
+    test('loginIDPUser adds clientSecret to parameters when using private client', async () => {
+        const auth = new Auth(configSLASPrivate)
+        await auth.loginIDPUser({redirectURI: 'test', code: 'test'})
+        expect(helpers.loginIDPUser).toHaveBeenCalled()
+        const functionArg = (helpers.loginIDPUser as jest.Mock).mock.calls[0][1]
+        expect(functionArg).toMatchObject({
+            clientSecret: SLAS_SECRET_PLACEHOLDER
+        })
+    })
+
+    test('authorizeIDP calls isomorphic authorizeIDP', async () => {
+        const auth = new Auth(config)
+        await auth.authorizeIDP({redirectURI: 'redirectURI', hint: 'test'})
+        expect(helpers.authorizeIDP).toHaveBeenCalled()
+        const functionArg = (helpers.authorizeIDP as jest.Mock).mock.calls[0][1]
+        expect(functionArg).toMatchObject({redirectURI: 'redirectURI', hint: 'test'})
+    })
+
+    test('authorizeIDP adds clientSecret to parameters when using private client', async () => {
+        const auth = new Auth(configSLASPrivate)
+        await auth.authorizeIDP({redirectURI: 'test', hint: 'test'})
+        expect(helpers.authorizeIDP).toHaveBeenCalled()
+        const privateClient = (helpers.authorizeIDP as jest.Mock).mock.calls[0][2]
+        expect(privateClient).toBe(true)
+    })
+
+    test('authorizePasswordless calls isomorphic authorizePasswordless', async () => {
+        const auth = new Auth(config)
+        await auth.authorizePasswordless({
+            callbackURI: 'callbackURI',
+            userid: 'userid',
+            mode: 'callback'
+        })
+        expect(helpers.authorizePasswordless).toHaveBeenCalled()
+        const functionArg = (helpers.authorizePasswordless as jest.Mock).mock.calls[0][2]
+        expect(functionArg).toMatchObject({
+            callbackURI: 'callbackURI',
+            userid: 'userid',
+            mode: 'callback'
+        })
+    })
+
+    test('authorizePasswordless sets mode to sms as configured', async () => {
+        const auth = new Auth(configPasswordlessSms)
+        await auth.authorizePasswordless({userid: 'userid', mode: 'sms'})
+        expect(helpers.authorizePasswordless).toHaveBeenCalled()
+        const functionArg = (helpers.authorizePasswordless as jest.Mock).mock.calls[0][2]
+        expect(functionArg).toMatchObject({userid: 'userid', mode: 'sms'})
+    })
+
+    test('getPasswordLessAccessToken calls isomorphic getPasswordLessAccessToken', async () => {
+        const auth = new Auth(config)
+        await auth.getPasswordLessAccessToken({pwdlessLoginToken: '12345678'})
+        expect(helpers.getPasswordLessAccessToken).toHaveBeenCalled()
+        const functionArg = (helpers.getPasswordLessAccessToken as jest.Mock).mock.calls[0][2]
+        expect(functionArg).toMatchObject({pwdlessLoginToken: '12345678'})
+    })
+
+    test('logout as registered user calls isomorphic logout', async () => {
+        const auth = new Auth(config)
+
+        // @ts-expect-error private method
+        // simulate logging in as login function is mocked
+        auth.set('customer_type', 'registered')
+
+        await auth.logout()
+        expect(helpers.logout).toHaveBeenCalled()
+        expect(helpers.loginGuestUser).toHaveBeenCalled()
+    })
+    test('logout as guest user does not call isomorphic logout', async () => {
         const auth = new Auth(config)
         await auth.logout()
+        expect(helpers.logout).not.toHaveBeenCalled()
         expect(helpers.loginGuestUser).toHaveBeenCalled()
+    })
+    test('updateCustomerPassword calls registered login', async () => {
+        const auth = new Auth(config)
+        await auth.updateCustomerPassword({
+            customer: baseCustomer,
+            password: 'test123',
+            currentPassword: 'test12',
+            shouldReloginCurrentSession: true
+        })
+        expect(helpers.loginRegisteredUserB2C).toHaveBeenCalled()
     })
     test('PWA private client mode takes priority', async () => {
         const auth = new Auth({...configSLASPrivate, clientSecret: 'someSecret'})
@@ -460,5 +747,156 @@ describe('Auth', () => {
         // Set mock value back to expected.
         // @ts-expect-error read-only property
         utils.onClient = () => true
+    })
+
+    test.each([
+        // When user has not selected DNT pref
+        [true, '1'],
+        [false, '0'],
+        [null, '0']
+    ])('setDNT(true) results dw_dnt=1', async (newDntPref, expectedDwDnt) => {
+        const auth = new Auth({...config, siteId: 'siteA'})
+        await auth.setDnt(newDntPref)
+        expect(auth.get('dw_dnt')).toBe(expectedDwDnt)
+    })
+
+    test('setDNT(null) results in defaultDnt if defaultDnt is defined', async () => {
+        const auth = new Auth({...config, siteId: 'siteA', defaultDnt: true})
+        await auth.setDnt(null)
+        expect(auth.get('dw_dnt')).toBe('1')
+    })
+
+    test('setDNT(true) sets cookie with an expiration time', async () => {
+        const setDntSpiedOn = jest.spyOn(Auth.prototype as any, 'set')
+        const auth = new Auth({...config, siteId: 'siteA'})
+        await auth.setDnt(true)
+        expect(setDntSpiedOn).toHaveBeenLastCalledWith(
+            'dw_dnt',
+            '1',
+            expect.objectContaining({expires: expect.any(Number)})
+        )
+    })
+
+    test('setDNT(false) sets cookie with an expiration time', async () => {
+        const setDntSpiedOn = jest.spyOn(Auth.prototype as any, 'set')
+        const auth = new Auth({...config, siteId: 'siteA'})
+        await auth.setDnt(false)
+        expect(setDntSpiedOn).toHaveBeenLastCalledWith(
+            'dw_dnt',
+            '0',
+            expect.objectContaining({expires: expect.any(Number)})
+        )
+    })
+
+    test('setDNT(null) sets cookie WITHOUT an expiration time', async () => {
+        const setDntSpiedOn = jest.spyOn(Auth.prototype as any, 'set')
+        const auth = new Auth({...config, siteId: 'siteA'})
+        await auth.setDnt(null)
+        await waitFor(() => {
+            expect(setDntSpiedOn).not.toHaveBeenCalledWith(
+                'dw_dnt',
+                '1',
+                expect.objectContaining({expires: expect.any(Number)})
+            )
+        })
+    })
+
+    test('getDnt() returns undefined if token and cookie value is conflicting', async () => {
+        const getSpiedOn = jest.spyOn(Auth.prototype as any, 'get')
+        const parseSlasJWTSpiedOn = jest.spyOn(Auth.prototype as any, 'parseSlasJWT')
+        parseSlasJWTSpiedOn.mockReturnValue({
+            dnt: '1'
+        })
+        getSpiedOn.mockReturnValue('0')
+
+        const auth = new Auth({...config, siteId: 'siteA'})
+        auth.getDnt()
+        await waitFor(() => {
+            expect(auth.getDnt()).toBeUndefined()
+        })
+    })
+})
+
+describe('Auth service sends credentials fetch option to the ShopperLogin API', () => {
+    beforeEach(() => {
+        jest.clearAllMocks()
+    })
+
+    test('Adds fetch options with credentials when not defined in config', async () => {
+        const auth = new Auth(config)
+        await auth.loginGuestUser()
+
+        // Ensure the helper method was called
+        expect(helpers.loginGuestUser).toHaveBeenCalled()
+        expect(helpers.loginGuestUser).toHaveBeenCalledTimes(1)
+
+        // Check that the correct parameters were passed to the helper
+        const callArguments = (helpers.loginGuestUser as jest.Mock).mock.calls[0]
+        expect(callArguments).toBeDefined()
+        expect(callArguments.length).toBeGreaterThan(0)
+
+        const shopperLogin: ShopperLogin<ApiClientConfigParams> = callArguments[0]
+        expect(shopperLogin).toBeDefined()
+        expect(shopperLogin.clientConfig).toBeDefined()
+        expect(shopperLogin.clientConfig.fetchOptions).toBeDefined()
+
+        // Ensure fetch options include the expected credentials
+        expect(shopperLogin.clientConfig.fetchOptions.credentials).toBe('same-origin')
+    })
+
+    test('Does not override the credentials in fetch options if already exists', async () => {
+        const configWithFetchOptions = {
+            ...config,
+            fetchOptions: {
+                credentials: 'include'
+            }
+        }
+        const auth = new Auth(configWithFetchOptions)
+        await auth.loginGuestUser()
+
+        // Ensure the helper method was called
+        expect(helpers.loginGuestUser).toHaveBeenCalled()
+        expect(helpers.loginGuestUser).toHaveBeenCalledTimes(1)
+
+        // Check that the correct parameters were passed to the helper
+        const callArguments = (helpers.loginGuestUser as jest.Mock).mock.calls[0]
+        expect(callArguments).toBeDefined()
+        expect(callArguments.length).toBeGreaterThan(0)
+
+        const shopperLogin: ShopperLogin<ApiClientConfigParams> = callArguments[0]
+        expect(shopperLogin).toBeDefined()
+        expect(shopperLogin.clientConfig).toBeDefined()
+        expect(shopperLogin.clientConfig.fetchOptions).toBeDefined()
+
+        // Ensure fetch options include the expected credentials
+        expect(shopperLogin.clientConfig.fetchOptions.credentials).toBe('include')
+    })
+
+    test('Adds credentials to the fetch options if it is missing', async () => {
+        const configWithFetchOptions = {
+            ...config,
+            fetchOptions: {
+                cache: 'no-cache'
+            }
+        }
+        const auth = new Auth(configWithFetchOptions)
+        await auth.loginGuestUser()
+
+        // Ensure the helper method was called
+        expect(helpers.loginGuestUser).toHaveBeenCalled()
+        expect(helpers.loginGuestUser).toHaveBeenCalledTimes(1)
+
+        // Check that the correct parameters were passed to the helper
+        const callArguments = (helpers.loginGuestUser as jest.Mock).mock.calls[0]
+        expect(callArguments).toBeDefined()
+        expect(callArguments.length).toBeGreaterThan(0)
+
+        const shopperLogin: ShopperLogin<ApiClientConfigParams> = callArguments[0]
+        expect(shopperLogin).toBeDefined()
+        expect(shopperLogin.clientConfig).toBeDefined()
+        expect(shopperLogin.clientConfig.fetchOptions).toBeDefined()
+
+        // Ensure fetch options include the expected credentials
+        expect(shopperLogin.clientConfig.fetchOptions.credentials).toBe('same-origin')
     })
 })

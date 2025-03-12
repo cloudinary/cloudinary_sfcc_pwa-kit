@@ -8,15 +8,17 @@
 import PropTypes from 'prop-types'
 import {getAssetUrl} from '@salesforce/pwa-kit-react-sdk/ssr/universal/utils'
 import {getAppOrigin} from '@salesforce/pwa-kit-react-sdk/utils/url'
+import logger from '@salesforce/retail-react-app/app/utils/logger-instance'
 import fetch from 'cross-fetch'
 
 /**
  * Dynamically import the translations/messages for a given locale
  * @param {string} locale
+ * @param {string} origin
  * @returns {Promise<Object>} The messages (compiled in AST format) in the given locale.
  *      If the translation file is not found, return an empty object (so react-intl would fall back to the inline messages)
  */
-export const fetchTranslations = async (locale) => {
+export const fetchTranslations = async (locale, origin) => {
     const targetLocale =
         typeof window === 'undefined'
             ? process.env.USE_PSEUDOLOCALE === 'true'
@@ -25,7 +27,7 @@ export const fetchTranslations = async (locale) => {
             : locale
 
     try {
-        const file = `${getAppOrigin()}${getAssetUrl(
+        const file = `${origin || getAppOrigin()}${getAssetUrl(
             `static/translations/compiled/${targetLocale}.json`
         )}`
         const response = await fetch(file)
@@ -38,9 +40,9 @@ export const fetchTranslations = async (locale) => {
 
         return await response.json()
     } catch (err) {
-        console.error(err)
-        console.log(
-            'Translation not found. Loading empty messages, so that react-intl would fall back to the inline default messages'
+        logger.error(
+            'Translation not found. Loading empty messages, so that react-intl would fall back to the inline default messages',
+            {namespace: 'utils.fetchTranslations', additionalProperties: {error: err}}
         )
         return {}
     }
