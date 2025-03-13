@@ -11,6 +11,10 @@ const RenderCloudinaryVideoPlayer = ({ cloudinaryImageGallery = {} }) => {
             if (cldObj.videoPlayerEnabled && typeof cloudinary !== 'undefined') {
                 if (cloudinary.Cloudinary && cloudinary.Cloudinary.new) {
                     if (document.querySelector('.cld-video-player') && !document.querySelector('.cld-video-player').classList.contains('video-js')) {
+                        if (cldObj.domain !== 'res.cloudinary.com') {
+                            cldObj.video.widgetOptions.privateCdn = true;
+                            cldObj.video.widgetOptions.secureDistribution = cldObj.domain;
+                        }
                         const cld = cloudinary.Cloudinary.new({ cloud_name: cldObj.cloudName })
                         if (cld.videoPlayer) {
                             cldObj.video.videoURL = cldObj.video.videoURL.lastIndexOf('?') > -1 ? cldObj.video.videoURL.substring(0, cldObj.video.videoURL.lastIndexOf('?')) + cloudinary.CLD_TRACKING_PARAM : cldObj.video.videoURL + cloudinary.CLD_TRACKING_PARAM
