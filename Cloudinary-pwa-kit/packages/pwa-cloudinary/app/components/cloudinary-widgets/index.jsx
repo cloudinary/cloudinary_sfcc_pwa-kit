@@ -8,6 +8,10 @@ const RenderCloudinaryGalleryWidget = ({ cloudinaryImageGallery = {}, imageUrls,
         const galleryOptions = imageUrls.galleryWidget.options
         galleryOptions.queryParam = cloudinary.CLD_PGW_TRACKING_PARAM
         if (typeof window !== 'undefined' && window.cloudinary && (window.cloudinary.galleryWidget || window.cldGalleryWidget)) {
+            if (cloudinaryImageGallery.domain !== 'res.cloudinary.com') {
+                galleryOptions.SecureDistribution = cloudinaryImageGallery.domain;
+                galleryOptions.privateCdn = true;
+            }
             if (window.cldGallery && !isProductSetOrBundle) {
                 await window.cldGallery.update(galleryOptions)
             } else {

@@ -256,7 +256,7 @@ const ProductTile = (props) => {
                                         isFocusable={true}
                                     >
                                         {/** Cloudinary Custom Code Starts */}
-                                        {c_cloudinary?.cldSwatches &&
+                                        {c_cloudinary?.cldSwatches?.length > 0 &&
                                             image ? (
                                             <CloudinaryImageSwatches
                                                 cloudinaryImageGallery={c_cloudinary}
