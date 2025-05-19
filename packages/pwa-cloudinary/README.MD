@@ -35,6 +35,9 @@ This version of the application uses [Template Extensibility](https://developer.
 
 See the [Localization README.md](https://github.com/SalesforceCommerceCloud/pwa-kit/blob/develop/packages/template-retail-react-app/app/page-designer/README.md) for important setup instructions for localization.
 
+## Cloudinary main SFCC cartridges
+For more information, see the [SFCC cartridge repo](https://github.com/cloudinary/cloudinary_sfcc_site_cartridge).
+
 ## 📖 Documentation
 
 The full documentation for PWA Kit and Managed Runtime is hosted on the [Salesforce Developers](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/overview) portal.
@@ -54,3 +57,4 @@ For more information on working with the PWA Kit, refer to:
 -   [Routing](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/routing.html)
 -   [Phased Headless Rollouts](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/phased-headless-rollouts.html)
 -   [Launch Your Storefront](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/launching-your-storefront.html)
+-   [Cloudinary Documentation](https://cloudinary.com/documentation/sfcc_b2c_commerce_cartridge_headless)
