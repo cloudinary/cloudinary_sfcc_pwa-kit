@@ -1,13 +1,38 @@
-# PWA Kit Generated App
+<div align="center">
 
-Welcome to the PWA Kit!
+<h1>The Progressive Web App (PWA) Kit</h1>
 
-## Getting Started
+</div>
+
+<div align="center">
+
+📖 [Read Docs](https://sfdc.co/pwa-kit) |
+🏖️ [View Demo](https://pwa-kit.mobify-storefront.com/) |
+🚀 [Deploy](https://runtime.commercecloud.com/) |
+➕ [Contribute](https://github.com/SalesforceCommerceCloud/pwa-kit/blob/develop/CONTRIBUTING.md)
+<br /><br />
+The PWA Kit is a storefront technology for headless commerce using Salesforce Commerce APIs and React. It provides front-end developers with a more flexible and agile approach to build and maintain modern shopping experiences.
+<br/><br/>
+<img alt="pwa-kit banner" src="https://raw.githubusercontent.com/SalesforceCommerceCloud/pwa-kit/develop/packages/template-retail-react-app/app/static/img/hero.png" style="width: 700px; height:auto;">
+
+</div>
+
+---
+
+## 🏄 Get Started
 
 ### Requirements
 
--   Node 18 or later
--   npm 9 or later
+-   Node 16 or later
+-   npm 8 or later
+
+### Create Your First Project
+
+```bash
+npx @salesforce/pwa-kit-create-app
+```
+
+Enter your [sandbox configuration](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/getting-started.html#new-project).
 
 ### Run the Project Locally
 
@@ -15,33 +40,34 @@ Welcome to the PWA Kit!
 npm start
 ```
 
-This will open a browser and your storefront will be running on http://localhost:3000
-
 ### Deploy to Managed Runtime
 
 ```
 npm run push -- -m "Message to help you recognize this bundle"
 ```
 
-**Note**: This command will push to the MRT project that matches the name field in `package.json`. To push to a different project, include the `-s` argument.
-
 **Important**: Access to the [Runtime Admin](https://runtime.commercecloud.com/) application is required to deploy bundles. To learn more, read our guide to [Push and Deploy Bundles](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/pushing-and-deploying-bundles.html).
-
-## Customizing the application
-
-This version of the application uses [Template Extensibility](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/template-extensibility.html) to empower you to more easily customize base templates. Please refer to our documentation for more information.
 
 ## 🌍 Localization
 
 See the [Localization README.md](https://github.com/SalesforceCommerceCloud/pwa-kit/blob/develop/packages/template-retail-react-app/app/page-designer/README.md) for important setup instructions for localization.
 
+## ⚠️ License Information
+
+The PWA Kit is licensed under a BSD 3-Clause license. See the [license](./LICENSE) for details.
+
+## ➕ Contribute
+
+Your contributions are welcome! Refer to the [CONTRIBUTING](./CONTRIBUTING.md) guide to get started. If you like `pwa-kit`, consider adding a ⭐ on the [GitHub Repo](https://github.com/SalesforceCommerceCloud/pwa-kit/). It helps other people discover PWA Kit!
+
+## Cloudinary main SFCC cartridges
+For more information, see the [SFCC cartridge repo](https://github.com/cloudinary/cloudinary_sfcc_site_cartridge).
+
 ## 📖 Documentation
 
 The full documentation for PWA Kit and Managed Runtime is hosted on the [Salesforce Developers](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/overview) portal.
 
-## Further documentation
-
-For more information on working with the PWA Kit, refer to:
+### Useful Links:
 
 -   [Get Started](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/getting-started.html)
 -   [Skills for Success](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/skills-for-success.html)
@@ -54,3 +80,7 @@ For more information on working with the PWA Kit, refer to:
 -   [Routing](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/routing.html)
 -   [Phased Headless Rollouts](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/phased-headless-rollouts.html)
 -   [Launch Your Storefront](https://developer.salesforce.com/docs/commerce/pwa-kit-managed-runtime/guide/launching-your-storefront.html)
+-   [Cloudinary Documentation](https://cloudinary.com/documentation/sfcc_b2c_commerce_cartridge_headless)
+## 🔮 Forward-Looking Statements
+
+This repository may contain forward-looking statements that involve risks, uncertainties, and assumptions. For more information, see [STATEMENTS](STATEMENTS.md)
