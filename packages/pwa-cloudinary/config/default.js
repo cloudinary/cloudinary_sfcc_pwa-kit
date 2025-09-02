@@ -119,6 +119,7 @@ module.exports = {
             host: '{HOST_NAME}',
             contentAssetId: 'home-main'
         },
+        preferences: 'CLDBaseDeliveryPath', //comma separated preferences e.g (pref1,pref2,pref3)
         versions: {
             CLDVideoPlayerVersion: '1.10.1',
             CLDCoreShrinkwrapJSURLVersion: '2.13.0'

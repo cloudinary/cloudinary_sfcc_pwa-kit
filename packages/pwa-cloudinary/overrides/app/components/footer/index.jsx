@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import {
     Box,
@@ -35,6 +35,7 @@ import { STORE_LOCATOR_IS_ENABLED } from '@salesforce/retail-react-app/app/const
 {/** Cloudinary Custom Code Starts */ }
 import Helmet from 'react-helmet'
 import { cloudinary } from '../../../../config/default'
+import * as reactCommerceSDK from '@salesforce/commerce-sdk-react'
 {/** Cloudinary Custom Code Ends */ }
 
 const [StylesProvider, useStyles] = createStylesContext('Footer')
@@ -42,6 +43,7 @@ const Footer = ({ ...otherProps }) => {
     const styles = useMultiStyleConfig('Footer')
     const intl = useIntl()
     const [locale, setLocale] = useState(intl.locale)
+    const [customPreferences, setCustomPreferences] = useState({})
     const { site, buildUrl } = useMultiSite()
     const { l10n } = site
     const supportedLocaleIds = l10n?.supportedLocales.map((locale) => locale.id)
@@ -50,6 +52,8 @@ const Footer = ({ ...otherProps }) => {
     const cloudinaryCore = `https://unpkg.com/cloudinary-core@${cloudinary.versions.CLDCoreShrinkwrapJSURLVersion}/cloudinary-core-shrinkwrap.min.js`
     const cloudinaryVideoPlayerJS = `https://unpkg.com/cloudinary-video-player@${cloudinary.versions.CLDVideoPlayerVersion}/dist/cld-video-player.min.js`
     const cloudinaryVideoPlayerCSS = `https://unpkg.com/cloudinary-video-player@${cloudinary.versions.CLDVideoPlayerVersion}/dist/cld-video-player.min.css`
+    const { useAccessToken, useCommerceApi } = reactCommerceSDK
+    const { getTokenWhenReady } = useAccessToken()
     {/** Cloudinary Custom Code Ends */ }
 
     // NOTE: this is a workaround to fix hydration error, by making sure that the `option.selected` property is set.
@@ -79,6 +83,23 @@ const Footer = ({ ...otherProps }) => {
         return links
     }
 
+    {/** Cloudinary Custom Code Starts */}
+    useEffect(() => {
+        getTokenWhenReady().then((token) => {
+            fetch(`/api/site-preferences?token=${encodeURIComponent(token)}`)
+                .then((res) => res.json())
+                .then((data) => {
+                    if(data.success){
+                        setCustomPreferences(data.customPreferences)
+                    }
+                })
+                .catch((err) => {
+                    console.error('Error fetching preferences:', err)
+                })
+        })
+    }, [])
+    {/** Cloudinary Custom Code End */}
+
     return (
         <Box as="footer" {...styles.container} {...otherProps}>
             {/** Cloudinary Custom Code Starts */}
@@ -91,6 +112,11 @@ const Footer = ({ ...otherProps }) => {
             <Helmet>
                 <link rel="stylesheet" href={cloudinaryVideoPlayerCSS} />
             </Helmet>
+            {customPreferences?.CLDBaseDeliveryPath && (
+                <Helmet>
+                    <link rel="preconnect" href={`https://${new URL(customPreferences.CLDBaseDeliveryPath).hostname}`} />
+                </Helmet>
+            )}
             {/** Cloudinary Custom Code Ends */}
 
             <Box {...styles.content} as="section">

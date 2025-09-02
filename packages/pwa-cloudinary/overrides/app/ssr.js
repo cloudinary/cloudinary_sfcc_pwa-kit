@@ -354,6 +354,36 @@ const { handler } = runtime.createHandler(options, (app) => {
         })
     })
 
+    app.get('/api/site-preferences', async (req, res) => {
+        try {
+            const token = req.query.token
+            const siteId = config.cloudinary.parameters.siteId
+            const shortCode = config.cloudinary.parameters.shortCode
+            const organizationId = config.cloudinary.parameters.organizationId
+            const sitePreferences = config.cloudinary.preferences
+
+            const prefsRes = await fetch(
+                `https://${shortCode}.api.commercecloud.salesforce.com/custom/custom-prefs/v1/organizations/${organizationId}/getcustompreferences?siteId=${siteId}&c_prefs=${sitePreferences}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            )
+
+            if (!prefsRes.ok) {
+                throw new Error(`Failed to fetch site preference: ${prefsRes}`)
+            }
+
+            const preferences = await prefsRes.json()
+            res.status(200).json(preferences)
+        } catch (err) {
+            res.status(500).json({error: 'Failed to fetch site preferences, ' + err})
+        }
+    })
+
     app.get('/robots.txt', runtime.serveStaticFile('static/robots.txt'))
     app.get('/favicon.ico', runtime.serveStaticFile('static/ico/favicon.ico'))
 
