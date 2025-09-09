@@ -48,13 +48,8 @@ const Footer = ({ ...otherProps }) => {
     const { l10n } = site
     const supportedLocaleIds = l10n?.supportedLocales.map((locale) => locale.id)
     const showLocaleSelector = supportedLocaleIds?.length > 1
-    {/** Cloudinary Custom Code Starts */ }
-    const cloudinaryCore = `https://unpkg.com/cloudinary-core@${cloudinary.versions.CLDCoreShrinkwrapJSURLVersion}/cloudinary-core-shrinkwrap.min.js`
-    const cloudinaryVideoPlayerJS = `https://unpkg.com/cloudinary-video-player@${cloudinary.versions.CLDVideoPlayerVersion}/dist/cld-video-player.min.js`
-    const cloudinaryVideoPlayerCSS = `https://unpkg.com/cloudinary-video-player@${cloudinary.versions.CLDVideoPlayerVersion}/dist/cld-video-player.min.css`
-    const { useAccessToken, useCommerceApi } = reactCommerceSDK
+    const { useAccessToken } = reactCommerceSDK
     const { getTokenWhenReady } = useAccessToken()
-    {/** Cloudinary Custom Code Ends */ }
 
     // NOTE: this is a workaround to fix hydration error, by making sure that the `option.selected` property is set.
     // For some reason, adding some styles prop (to the option element) prevented `selected` from being set.
@@ -103,15 +98,21 @@ const Footer = ({ ...otherProps }) => {
     return (
         <Box as="footer" {...styles.container} {...otherProps}>
             {/** Cloudinary Custom Code Starts */}
-            <Helmet>
-                <script src={cloudinaryCore} />
-            </Helmet>
-            <Helmet>
-                <script src={cloudinaryVideoPlayerJS} />
-            </Helmet>
-            <Helmet>
-                <link rel="stylesheet" href={cloudinaryVideoPlayerCSS} />
-            </Helmet>
+            {customPreferences?.CLDCoreShrinkwrapJSURL && (
+                <Helmet>
+                    <script src={customPreferences?.CLDCoreShrinkwrapJSURL} />
+                </Helmet>
+            )}
+            {customPreferences?.CLDVideoPlayerJSURL && (
+                <Helmet>
+                    <script src={customPreferences?.CLDVideoPlayerJSURL} />
+                </Helmet>
+            )}
+            {customPreferences?.CLDVideoPlayerCSSURL && (
+                <Helmet>
+                    <link rel="stylesheet" href={customPreferences?.CLDVideoPlayerCSSURL} />
+                </Helmet>
+            )}
             {customPreferences?.CLDBaseDeliveryPath && (
                 <Helmet>
                     <link rel="preconnect" href={`https://${new URL(customPreferences.CLDBaseDeliveryPath).hostname}`} />
