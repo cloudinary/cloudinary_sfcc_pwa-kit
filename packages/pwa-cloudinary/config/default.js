@@ -119,7 +119,6 @@ module.exports = {
             host: '{HOST_NAME}',
             contentAssetId: 'home-main'
         },
-        preferences: 'CLDBaseDeliveryPath,CLDCoreShrinkwrapJSURL,CLDVideoPlayerJSURL,CLDVideoPlayerCSSURL', //comma separated preferences e.g (pref1,pref2,pref3)
         preferences: 'CLDBaseDeliveryPath,CLDCoreShrinkwrapJSURL,CLDVideoPlayerJSURL,CLDVideoPlayerCSSURL,CLDGalleryJSURL', //comma separated preferences e.g (pref1,pref2,pref3)
         CLD_TRACKING_PARAM: '?_i=AP3',
         CLD_PGW_TRACKING_PARAM: 'AP3'
