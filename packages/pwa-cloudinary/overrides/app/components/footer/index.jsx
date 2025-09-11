@@ -34,8 +34,8 @@ import { STORE_LOCATOR_IS_ENABLED } from '@salesforce/retail-react-app/app/const
 
 {/** Cloudinary Custom Code Starts */ }
 import Helmet from 'react-helmet'
-import { cloudinary } from '../../../../config/default'
 import * as reactCommerceSDK from '@salesforce/commerce-sdk-react'
+import { useCustomPreferences } from '../../../../app/utils/preferences-context';
 {/** Cloudinary Custom Code Ends */ }
 
 const [StylesProvider, useStyles] = createStylesContext('Footer')
@@ -43,14 +43,13 @@ const Footer = ({ ...otherProps }) => {
     const styles = useMultiStyleConfig('Footer')
     const intl = useIntl()
     const [locale, setLocale] = useState(intl.locale)
-    const [customPreferences, setCustomPreferences] = useState({})
     const { site, buildUrl } = useMultiSite()
     const { l10n } = site
     const supportedLocaleIds = l10n?.supportedLocales.map((locale) => locale.id)
     const showLocaleSelector = supportedLocaleIds?.length > 1
     const { useAccessToken } = reactCommerceSDK
     const { getTokenWhenReady } = useAccessToken()
-
+    const { customPreferences, loadPreferences } = useCustomPreferences()
     // NOTE: this is a workaround to fix hydration error, by making sure that the `option.selected` property is set.
     // For some reason, adding some styles prop (to the option element) prevented `selected` from being set.
     // So now we add the styling to the parent element instead.
@@ -81,18 +80,9 @@ const Footer = ({ ...otherProps }) => {
     {/** Cloudinary Custom Code Starts */}
     useEffect(() => {
         getTokenWhenReady().then((token) => {
-            fetch(`/api/site-preferences?token=${encodeURIComponent(token)}`)
-                .then((res) => res.json())
-                .then((data) => {
-                    if(data.success){
-                        setCustomPreferences(data.customPreferences)
-                    }
-                })
-                .catch((err) => {
-                    console.error('Error fetching preferences:', err)
-                })
+            loadPreferences(token); // Send token when ready
         })
-    }, [])
+    }, [loadPreferences])
     {/** Cloudinary Custom Code End */}
 
     return (
