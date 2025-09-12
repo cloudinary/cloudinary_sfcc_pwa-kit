@@ -33,11 +33,13 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {}, selectedVar
         });
     }, [loadPreferences])
 
-// Wait for both preferences and cloudinaryImageGallery to be ready
+    // Wait for both preferences and cloudinaryImageGallery to be ready
     useEffect(() => {
+        if (!cloudinaryImageGallery?.galleryEnabled) return
+        
         const galleryUrl = customPreferences?.CLDGalleryJSURL
 
-        if (!galleryUrl || !cloudinaryImageGallery) return
+        if (!galleryUrl) return
 
         const scriptAlreadyExists = document.querySelector(`script[src="${galleryUrl}"]`) !== null
 
@@ -46,15 +48,13 @@ const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {}, selectedVar
             return
         }
 
-        if (cloudinaryImageGallery.galleryEnabled) {
-            const script = document.createElement('script')
-            script.src = galleryUrl
-            script.onload = () => {
-                setIsScriptLoaded(true)
-                window.cldGalleryWidget = window.cloudinary
-            }
-            document.head.appendChild(script)
+        const script = document.createElement('script')
+        script.src = galleryUrl
+        script.onload = () => {
+            setIsScriptLoaded(true)
+            window.cldGalleryWidget = window.cloudinary
         }
+        document.head.appendChild(script)
 
     }, [customPreferences, cloudinaryImageGallery])
 
