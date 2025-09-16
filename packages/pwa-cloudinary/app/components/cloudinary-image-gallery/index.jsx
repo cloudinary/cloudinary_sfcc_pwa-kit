@@ -11,7 +11,8 @@ import RenderCloudinaryGalleryWidget from '../../components/cloudinary-widgets'
 import RenderCloudinaryVideoPlayer from '../../components/cloudinary-product-video'
 import { cloudinary } from '../../../config/default'
 import { updateTrackingParam } from '../../utils/imageSrcset'
-
+import * as reactCommerceSDK from '@salesforce/commerce-sdk-react'
+import { useCustomPreferences } from '../../utils/preferences-context';
 const EnterKeyNumber = 13
 
 /**
@@ -20,25 +21,42 @@ const EnterKeyNumber = 13
 const CloudinaryImageGallery = ({ size, cloudinaryImageGallery = {}, selectedVariationAttributes, isProductSetOrBundle }) => {
     const [selectedIndex, setSelectedIndex] = useState(0)
     const [isScriptLoaded, setIsScriptLoaded] = useState(false)
+    const { useAccessToken } = reactCommerceSDK
+    const { getTokenWhenReady } = useAccessToken()
+    const { customPreferences, loadPreferences } = useCustomPreferences()
     let imageUrls
 
+    // Fetch token and preferences once
     useEffect(() => {
-        if (
-            document.querySelector(
-                `script[src="${`https://product-gallery.cloudinary.com/all.js`}"]`
-            ) !== null && !isProductSetOrBundle
-        ) {
+        getTokenWhenReady().then((token) => {
+            loadPreferences(token) // Only triggers once due to guard in loadPreferences
+        });
+    }, [loadPreferences])
+
+    // Wait for both preferences and cloudinaryImageGallery to be ready
+    useEffect(() => {
+        if (!cloudinaryImageGallery?.galleryEnabled) return
+        
+        const galleryUrl = customPreferences?.CLDGalleryJSURL
+
+        if (!galleryUrl) return
+
+        const scriptAlreadyExists = document.querySelector(`script[src="${galleryUrl}"]`) !== null
+
+        if (scriptAlreadyExists && !isProductSetOrBundle) {
             setIsScriptLoaded(true)
-        } else if (cloudinaryImageGallery?.galleryEnabled) {
-            const script = document.createElement('script')
-            script.src = `https://product-gallery.cloudinary.com/all.js`
-            script.onload = () => {
-                setIsScriptLoaded(true)
-                window.cldGalleryWidget = window.cloudinary
-            }
-            document.head.appendChild(script)
+            return
         }
-    }, [cloudinaryImageGallery])
+
+        const script = document.createElement('script')
+        script.src = galleryUrl
+        script.onload = () => {
+            setIsScriptLoaded(true)
+            window.cldGalleryWidget = window.cloudinary
+        }
+        document.head.appendChild(script)
+
+    }, [customPreferences, cloudinaryImageGallery])
 
     const styles = useMultiStyleConfig('ImageGallery', { size })
     const selectedVariant = cloudinaryImageGallery?.pdpImages?.find(data => {

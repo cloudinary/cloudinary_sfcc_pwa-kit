@@ -119,10 +119,7 @@ module.exports = {
             host: '{HOST_NAME}',
             contentAssetId: 'home-main'
         },
-        versions: {
-            CLDVideoPlayerVersion: '1.10.1',
-            CLDCoreShrinkwrapJSURLVersion: '2.13.0'
-        },
+        preferences: 'CLDBaseDeliveryPath,CLDCoreShrinkwrapJSURL,CLDVideoPlayerJSURL,CLDVideoPlayerCSSURL,CLDGalleryJSURL', //comma separated preferences e.g (pref1,pref2,pref3)
         CLD_TRACKING_PARAM: '?_i=AP3',
         CLD_PGW_TRACKING_PARAM: 'AP3'
     }
