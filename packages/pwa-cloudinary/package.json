@@ -1,9 +1,9 @@
 {
   "name": "pwa-cloudinary",
-  "version": "24.1.2",
+  "version": "24.1.3",
   "license": "See license in LICENSE",
   "engines": {
-    "node": "^18.0.0 || ^20.0.0 || ^22.0.0",
+    "node": "^22.0.0 || ^24.0.0",
     "npm": "^9.0.0 || ^10.0.0 || ^11.0.0"
   },
   "ccExtensibility": {
