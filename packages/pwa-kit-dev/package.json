@@ -57,7 +57,7 @@
     "@loadable/babel-plugin": "^5.15.3",
     "@loadable/server": "^5.15.3",
     "@loadable/webpack-plugin": "^5.15.2",
-    "@pmmmwh/react-refresh-webpack-plugin": "^0.5.10",
+    "@pmmmwh/react-refresh-webpack-plugin": "^0.6.1",
     "@salesforce/pwa-kit-runtime": "3.9.0-dev",
     "@typescript-eslint/eslint-plugin": "^5.57.0",
     "@typescript-eslint/parser": "^5.57.0",
